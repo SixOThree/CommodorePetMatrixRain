@@ -63,9 +63,9 @@ KERNAL_CHROUT = $ffd2
 
         ldx #0
 InitRain:
-        ; Random speed (0-8)
+        ; Random speed (0 to SPDSTART-1)
 -       jsr RANDOM
-        cmp #9
+        cmp SPDSTART
         bcs -
         sta SPEED,x  
 
@@ -158,7 +158,10 @@ NextColumn:
         ; Generate new random character
         jsr RANDOM
         and #$7f               ; mask to 0-127 (normal video)
-        sta $fb
+        cmp #CHR_SPACE
+        bne +
+        lda #33                ; replace space with '!'
++       sta $fb
         jsr RANDOM
         cmp REVERSE            ; check reverse chance
         bcs .writeHead
@@ -179,7 +182,10 @@ NextColumn:
         ; Current cell is empty, generate new character
         jsr RANDOM
         and #$7f               ; normal video
-        sta $fb
+        cmp #CHR_SPACE
+        bne +
+        lda #33                ; replace space with '!'
++       sta $fb
         jsr RANDOM
         cmp REVERSE
         bcs .writeHead
@@ -266,7 +272,10 @@ NextColumn:
         ; Write random character (normal video)
         jsr RANDOM
         and #$7f
-        sta ($fb),y
+        cmp #CHR_SPACE
+        bne +
+        lda #33                ; replace space with '!'
++       sta ($fb),y
 
 ; ------------------------------------------------------------
 ; Movement timing
@@ -319,9 +328,9 @@ MoveDown:
         bcs -
         sta RAINLO,x 
 
-        ; New random speed (0-4, faster than initial)
+        ; New random speed (0 to SPDRESET-1)
 -       jsr RANDOM
-        cmp #5
+        cmp SPDRESET
         bcs -
         sta SPEED,x
 
@@ -458,7 +467,9 @@ TRAILMIN !byte 10              ; minimum trail length (rows)
 TRAILMAX !byte 24              ; maximum trail length (rows)
 REVERSE  !byte 64              ; reverse video chance (0=never, 255=always)
 NEWCHAR  !byte 51              ; new char chance (lower=more flicker)
-NUMDRIPS !byte 80              ; active columns (max 80, try 70 for gaps)
+NUMDRIPS !byte 70              ; active columns (max 80, try 70 for gaps)
+SPDSTART !byte 9               ; initial speed range (0 to N-1, lower=faster)
+SPDRESET !byte 5               ; reset speed range (0 to N-1, lower=faster)
 
 
 ; ============================================================

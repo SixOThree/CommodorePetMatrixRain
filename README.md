@@ -2,8 +2,6 @@
 
 A Matrix-style falling character animation for the Commodore PET 8032 (80-column display).
 
-![Commodore PET 8032](https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Commodore_8032_computer.jpg/320px-Commodore_8032_computer.jpg)
-
 ## About
 
 This 6502 assembly program recreates the iconic "digital rain" effect from The Matrix on vintage Commodore PET hardware. Features include:
@@ -22,7 +20,7 @@ This project was developed using [C64 Studio](https://github.com/GeorgRottenstei
 Load the .prg file on a Commodore PET 8032 or emulator (such as [VICE xpet](https://vice-emu.sourceforge.io/)):
 
 ```
-LOAD "matrix_rain_8032_noclock_v8.prg",8
+LOAD "*",8
 RUN
 ```
 
@@ -39,7 +37,9 @@ Visual parameters can be adjusted by modifying these values in the source (lines
 | TRAILMAX | 24      | Maximum trail length in rows |
 | REVERSE  | 64      | Reverse video chance (0=never, 255=always) |
 | NEWCHAR  | 51      | New character chance - characters are written every frame, so too high of a value looks noisy |
-| NUMDRIPS | 80      | Active columns (max 80, use 70 for gaps) |
+| NUMDRIPS | 70      | Active columns (max 80, use 70 for gaps) |
+| SPDSTART | 9       | Initial speed range 0 to N-1 (lower=faster) |
+| SPDRESET | 5       | Reset speed range 0 to N-1 (lower=faster, creates acceleration) |
 
 ## Credits
 
