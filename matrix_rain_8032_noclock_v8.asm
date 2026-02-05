@@ -4,6 +4,8 @@
 ; Matrix-style falling characters
 ; Modified for 80-column PET (8032)
 ; Original from Petopia demo by Milasoft
+;
+; Author: Matthew Dugal (github.com/SixOThree)
 ; ============================================================
 ;
 ; Memory Map:
