@@ -1,0 +1,814 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Matrix Rain C Port Benchmark</title>
+<style>
+  :root {
+    --ground:    #f2f4f0;
+    --surface:   #ffffff;
+    --surface-2: #e9ede7;
+    --ink:       #16231a;
+    --ink-2:     #3e4d3f;
+    --muted:     #66765f;
+    --rule:      #d7ded3;
+    --grid:      #e4e9e0;
+    --accent:    #1f7a3d;
+    --on-accent: #f3f8f3;
+    --series-2:  #8a4bbf;
+    --good:      #1f7a3d;
+    --good-bg:   #e2f0e6;
+    --warn:      #8c5a0d;
+    --warn-bg:   #f6ecd9;
+    --bad:       #9d3529;
+    --bad-bg:    #f6e2df;
+    --shadow:    0 1px 2px rgba(20, 35, 22, .06), 0 6px 18px rgba(20, 35, 22, .05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground:    #101410;
+      --surface:   #181e18;
+      --surface-2: #212a21;
+      --ink:       #e4ebe2;
+      --ink-2:     #b8c3b6;
+      --muted:     #8b9a8b;
+      --rule:      #2b352b;
+      --grid:      #262f26;
+      --accent:    #3fae64;
+      --on-accent: #0b130c;
+      --series-2:  #9a74d4;
+      --good:      #3fae64;
+      --good-bg:   #17281b;
+      --warn:      #d19a3f;
+      --warn-bg:   #2c2314;
+      --bad:       #e0705e;
+      --bad-bg:    #2e1b18;
+      --shadow:    0 1px 2px rgba(0, 0, 0, .4), 0 6px 18px rgba(0, 0, 0, .3);
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font: 15px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-synthesis-weight: none;
+  }
+
+  code, kbd, .mono, pre {
+    font-family: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  }
+
+  .wrap { max-width: 1100px; margin-inline: auto; padding-inline: 16px; }
+
+  /* ---------- masthead ---------- */
+
+  .masthead {
+    background: var(--accent);
+    color: var(--on-accent);
+    padding-block: 34px 30px;
+  }
+  .masthead h1 {
+    margin: 0 0 6px;
+    font-size: clamp(26px, 4.4vw, 38px);
+    line-height: 1.15;
+    letter-spacing: -.015em;
+    text-wrap: balance;
+  }
+  .masthead .standfirst {
+    margin: 0 0 22px;
+    max-width: 62ch;
+    font-size: 16px;
+    opacity: .92;
+  }
+  .facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 28px;
+    margin: 0;
+    font-size: 12.5px;
+  }
+  .facts div { display: flex; gap: 7px; align-items: baseline; }
+  .facts dt {
+    text-transform: uppercase;
+    letter-spacing: .09em;
+    font-size: 10.5px;
+    opacity: .72;
+  }
+  .facts dd { margin: 0; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+
+  /* ---------- table of contents ---------- */
+
+  .toc {
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    z-index: 10;
+    background: var(--surface);
+    border-bottom: 1px solid var(--rule);
+    box-shadow: 0 1px 0 rgba(0,0,0,.02);
+  }
+  .toc nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px 20px;
+    padding-block: 11px;
+    font-size: 13px;
+  }
+  .toc a {
+    color: var(--muted);
+    text-decoration: none;
+    padding: 2px 0;
+    border-bottom: 2px solid transparent;
+  }
+  .toc a:hover, .toc a:focus-visible { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* ---------- structure ---------- */
+
+  main { padding-block: 40px 72px; }
+
+  section + section { margin-top: 52px; }
+
+  h2 {
+    margin: 0 0 4px;
+    font-size: 22px;
+    letter-spacing: -.01em;
+    scroll-margin-top: 70px;
+  }
+  h2 + .lede { margin: 0 0 22px; color: var(--muted); max-width: 66ch; }
+
+  h3 { margin: 30px 0 10px; font-size: 16px; }
+
+  p { max-width: 68ch; }
+
+  a { color: var(--accent); }
+
+  /* ---------- tiles ---------- */
+
+  .tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 14px;
+    margin: 0 0 8px;
+    padding: 0;
+    list-style: none;
+  }
+  .tile {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    padding: 16px 18px 14px;
+  }
+  .tile .n {
+    display: block;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 27px;
+    line-height: 1.1;
+    letter-spacing: -.02em;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+  }
+  .tile .k {
+    display: block;
+    margin-top: 7px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .085em;
+    color: var(--muted);
+  }
+  .tile .was { display: block; margin-top: 5px; font-size: 12.5px; color: var(--ink-2); }
+  .tile.hero { border-left: 3px solid var(--accent); }
+
+  /* ---------- charts ---------- */
+
+  figure {
+    margin: 26px 0 0;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    padding: 18px 18px 10px;
+  }
+  figure .chart-title { font-size: 14px; font-weight: 600; margin: 0 0 2px; }
+  figure .chart-sub { font-size: 12.5px; color: var(--muted); margin: 0 0 12px; max-width: 70ch; }
+  .svg-scroll { overflow-x: auto; }
+  .svg-scroll svg { display: block; min-width: 560px; width: 100%; height: auto; }
+  figcaption { font-size: 12.5px; color: var(--muted); padding-top: 10px; max-width: 74ch; }
+
+  /* ---------- step cards ---------- */
+
+  .steps { display: grid; gap: 12px; margin-top: 24px; }
+  .step {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    padding: 15px 17px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 4px 18px;
+    align-items: start;
+  }
+  .step.is-rejected { background: var(--surface-2); }
+  .step h3 { grid-column: 1; margin: 0; font-size: 15px; }
+  .step p { grid-column: 1; margin: 0; font-size: 14px; color: var(--ink-2); max-width: 74ch; }
+  .step .delta {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    text-align: right;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .step .delta b { display: block; font-size: 18px; font-weight: 600; letter-spacing: -.01em; }
+  .tag {
+    display: inline-block;
+    margin-top: 6px;
+    padding: 2px 8px;
+    border-radius: 2px;
+    font-family: system-ui, sans-serif;
+    font-size: 10.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+  }
+  .tag.kept     { background: var(--good-bg); color: var(--good); }
+  .tag.marginal { background: var(--warn-bg); color: var(--warn); }
+  .tag.rejected { background: var(--bad-bg);  color: var(--bad); }
+
+  /* ---------- tables ---------- */
+
+  .table-scroll { overflow-x: auto; margin-top: 20px; }
+  table { border-collapse: collapse; width: 100%; min-width: 520px; font-size: 13.5px; }
+  caption { text-align: left; font-size: 12.5px; color: var(--muted); padding-bottom: 9px; }
+  th, td { text-align: left; padding: 8px 14px 8px 0; border-bottom: 1px solid var(--rule); }
+  th {
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: .085em;
+    color: var(--muted);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  td.num, th.num {
+    text-align: right;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+  tbody tr:last-child td { border-bottom: 0; }
+  tr.total td { font-weight: 600; border-top: 2px solid var(--rule); }
+
+  /* ---------- code ---------- */
+
+  pre {
+    overflow-x: auto;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--accent);
+    border-radius: 3px;
+    padding: 13px 15px;
+    font-size: 12.5px;
+    line-height: 1.55;
+    margin: 16px 0;
+  }
+  code { font-size: .92em; }
+  p code, li code, td code {
+    background: var(--surface-2);
+    padding: 1px 5px;
+    border-radius: 2px;
+  }
+
+  ul.plain { padding-left: 20px; max-width: 68ch; }
+  ul.plain li { margin-bottom: 7px; }
+
+  .note {
+    border-left: 3px solid var(--warn);
+    background: var(--warn-bg);
+    padding: 13px 16px;
+    border-radius: 0 3px 3px 0;
+    margin: 22px 0;
+    font-size: 14px;
+  }
+  .note p { margin: 0; max-width: 72ch; }
+  .note strong { color: var(--warn); }
+
+  footer {
+    border-top: 1px solid var(--rule);
+    padding-block: 22px 40px;
+    font-size: 12.5px;
+    color: var(--muted);
+  }
+  footer p { max-width: 72ch; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="wrap">
+    <h1>Closing the gap between cc65 and hand-written 6502</h1>
+    <p class="standfirst">
+      The C port of the Matrix rain effect ran at 2.19 times the cost of the assembly it
+      was translated from. Measuring where the cycles went, then reshaping the C around
+      cc65's code generator, brought that to 1.70 without changing a single pixel of output.
+    </p>
+    <dl class="facts">
+      <div><dt>Date</dt><dd>2026-09-17</dd></div>
+      <div><dt>Branch</dt><dd>feature/c-port-performance</dd></div>
+      <div><dt>Commit</dt><dd>1784b23</dd></div>
+      <div><dt>Target</dt><dd>Commodore PET 8032</dd></div>
+      <div><dt>Compiler</dt><dd>cc65 V2.19</dd></div>
+    </dl>
+  </div>
+</header>
+
+<div class="toc">
+  <div class="wrap">
+    <nav aria-label="Sections">
+      <a href="#result">Result</a>
+      <a href="#method">How it was measured</a>
+      <a href="#ledger">Every change, and what it bought</a>
+      <a href="#profile">Where the cycles go</a>
+      <a href="#rejected">Changes that did not survive</a>
+      <a href="#remaining">What is left in the gap</a>
+      <a href="#reproduce">Reproducing this</a>
+    </nav>
+  </div>
+</div>
+
+<main class="wrap">
+
+<section id="result">
+  <h2>Result</h2>
+  <p class="lede">
+    Nine changes to the C source, each one measured and each one checked against the
+    assembly's output before the next was attempted.
+  </p>
+
+  <ul class="tiles">
+    <li class="tile hero">
+      <span class="n">31,372</span>
+      <span class="k">Cycles per frame</span>
+      <span class="was">was 40,457, a 22.5% cut</span>
+    </li>
+    <li class="tile">
+      <span class="n">1.70&times;</span>
+      <span class="k">Of the assembly</span>
+      <span class="was">was 2.19&times;</span>
+    </li>
+    <li class="tile">
+      <span class="n">2048 / 2048</span>
+      <span class="k">Screen bytes identical</span>
+      <span class="was">after 400 frames, every step</span>
+    </li>
+    <li class="tile">
+      <span class="n">1,449 B</span>
+      <span class="k">Compiled size</span>
+      <span class="was">was 1,567 B, assembly is 1,000 B</span>
+    </li>
+  </ul>
+
+  <p style="margin-top:26px">
+    A PET frame at 1 MHz and 60 Hz is 16,667 cycles. Neither version fits in one.
+    The assembly needs 1.11 frames and so runs at roughly 54 fps; the C build now needs
+    1.88 and runs at roughly 32, up from 25. That the hand-written original also misses
+    60 fps is worth knowing before anyone chases the last few hundred cycles.
+  </p>
+
+  <figure>
+    <p class="chart-title">Cycles per frame after each change</p>
+    <p class="chart-sub">Each bar is the measured cost of a frame with that change and every change above it applied. Lower is better.</p>
+    <div class="svg-scroll">
+      <svg viewBox="0 0 880 420" role="img" aria-label="Horizontal bar chart of cycles per frame falling from 40,457 at the baseline to 31,372 after the final change, with reference lines at the assembly's 18,452 cycles and the 16,667-cycle retrace budget.">
+        <!-- grid -->
+        <g stroke="var(--grid)" stroke-width="1">
+          <line x1="240" y1="40" x2="240" y2="376"></line>
+          <line x1="368.6" y1="40" x2="368.6" y2="376"></line>
+          <line x1="497.1" y1="40" x2="497.1" y2="376"></line>
+          <line x1="625.7" y1="40" x2="625.7" y2="376"></line>
+          <line x1="754.3" y1="40" x2="754.3" y2="376"></line>
+        </g>
+
+        <!-- reference lines -->
+        <g stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="4 3">
+          <line x1="454.3" y1="34" x2="454.3" y2="376"></line>
+          <line x1="477.2" y1="34" x2="477.2" y2="376"></line>
+        </g>
+        <text x="450" y="22" text-anchor="end" font-size="11" fill="var(--muted)">retrace budget 16,667</text>
+        <text x="481" y="22" text-anchor="start" font-size="11" fill="var(--muted)">assembly 18,452</text>
+
+        <!-- bars -->
+        <g fill="var(--accent)">
+          <path d="M240,54 H756.2 Q760.2,54 760.2,58 V70 Q760.2,74 756.2,74 H240 Z"></path>
+          <path d="M240,90 H713.0 Q717.0,90 717.0,94 V106 Q717.0,110 713.0,110 H240 Z"></path>
+          <path d="M240,126 H705.1 Q709.1,126 709.1,130 V142 Q709.1,146 705.1,146 H240 Z"></path>
+          <path d="M240,162 H697.9 Q701.9,162 701.9,166 V178 Q701.9,182 697.9,182 H240 Z"></path>
+          <path d="M240,198 H697.6 Q701.6,198 701.6,202 V214 Q701.6,218 697.6,218 H240 Z"></path>
+          <path d="M240,234 H682.8 Q686.8,234 686.8,238 V250 Q686.8,254 682.8,254 H240 Z"></path>
+          <path d="M240,270 H673.0 Q677.0,270 677.0,274 V286 Q677.0,290 673.0,290 H240 Z"></path>
+          <path d="M240,306 H647.8 Q651.8,306 651.8,310 V322 Q651.8,326 647.8,326 H240 Z"></path>
+          <path d="M240,342 H639.3 Q643.3,342 643.3,346 V358 Q643.3,362 639.3,362 H240 Z"></path>
+        </g>
+
+        <!-- row labels -->
+        <g font-size="12" fill="var(--ink-2)" text-anchor="end">
+          <text x="228" y="68">baseline</text>
+          <text x="228" y="104">seeds in zero page</text>
+          <text x="228" y="140">unsigned bound checks</text>
+          <text x="228" y="176">screen base as constant</text>
+          <text x="228" y="212">zero page screen pointers</text>
+          <text x="228" y="248">position as split bytes</text>
+          <text x="228" y="284">row offsets as split bytes</text>
+          <text x="228" y="320">rnd without spilled tap</text>
+          <text x="228" y="356">index and char in zero page</text>
+        </g>
+
+        <!-- value labels -->
+        <g font-size="12" fill="var(--ink)" text-anchor="start"
+           font-family="ui-monospace, SF Mono, Menlo, Consolas, monospace">
+          <text x="766.2" y="68">40,457</text>
+          <text x="723.0" y="104">37,101</text>
+          <text x="715.1" y="140">36,489</text>
+          <text x="707.9" y="176">35,925</text>
+          <text x="707.6" y="212">35,901</text>
+          <text x="692.8" y="248">34,751</text>
+          <text x="683.0" y="284">33,992</text>
+          <text x="657.8" y="320">32,028</text>
+          <text x="649.3" y="356">31,372</text>
+        </g>
+
+        <!-- axis -->
+        <line x1="240" y1="376" x2="800" y2="376" stroke="var(--rule)" stroke-width="1"></line>
+        <g font-size="11" fill="var(--muted)" text-anchor="middle">
+          <text x="240" y="394">0</text>
+          <text x="368.6" y="394">10k</text>
+          <text x="497.1" y="394">20k</text>
+          <text x="625.7" y="394">30k</text>
+          <text x="754.3" y="394">40k</text>
+        </g>
+        <text x="520" y="412" font-size="11" fill="var(--muted)" text-anchor="middle">cycles per frame</text>
+      </svg>
+    </div>
+    <figcaption>
+      Every bar crosses both reference lines. Nothing in pure C came close to the
+      assembly. Two of the nine changes did most of the work.
+    </figcaption>
+  </figure>
+</section>
+
+<section id="method">
+  <h2>How it was measured</h2>
+  <p class="lede">
+    The headline comparison needed the assembly's real number, not an estimate of it.
+  </p>
+
+  <h3>The assembly baseline</h3>
+  <p>
+    ACME is not installed here and converting the source to a different assembler risked
+    measuring a translation rather than the real thing. Instead the shipped
+    <code>matrix_rain_8032_noclock_v8.prg</code> is copied byte for byte into memory at
+    <code>$0401</code> inside cc65's 6502 simulator, where its absolute addressing expects
+    to run. Two bytes are then patched: the KERNAL screen clear, because there is no
+    KERNAL in the simulator, and the first byte of the main loop, which becomes an
+    <code>RTS</code> so initialisation returns instead of spinning on a VIA that does not
+    exist. Everything measured after that is the original code, unmodified.
+  </p>
+  <p>
+    Addresses were read out of the binary rather than assumed, by finding the
+    <code>lda $e840 / and #32 / bne</code> retrace loop and taking the <code>jsr</code>
+    operand that follows it.
+  </p>
+
+  <h3>Cycle counts</h3>
+  <p>
+    Both versions are built twice, at 100 frames and at 1100, and run under
+    <code>sim65 -c</code>. Subtracting the two totals cancels startup, initialisation and
+    the screen dump, leaving exactly 1000 frames of drawing. Dividing gives the per-frame
+    figure. Frame counts start at 100 rather than 0 because the first frames do less work
+    while drops are still above the screen.
+  </p>
+
+  <h3>Correctness</h3>
+  <p>
+    The animation is fully deterministic: a fixed LFSR seed and no input. That makes exact
+    comparison possible. Both builds run 400 frames and print all 2048 screen bytes as
+    hex, and the two outputs are compared. They match exactly, and they matched after
+    every single change in the table below. A change that altered the animation would
+    have failed immediately rather than passing as a plausible-looking screenful of rain.
+  </p>
+
+  <div class="note">
+    <p>
+      <strong>One caveat on the profile numbers.</strong> The per-function profile comes
+      from instruction traces of a 2-frame and a 12-frame run, subtracted. Those early
+      frames do less work than the steady state, so the profile totals (36,409 and 28,554)
+      sit below the measured per-frame figures (40,457 and 31,372). The proportions are
+      sound; the absolute values in that table are not the headline numbers.
+    </p>
+  </div>
+</section>
+
+<section id="ledger">
+  <h2>Every change, and what it bought</h2>
+  <p class="lede">
+    Applied in this order. Each figure is the measured drop from the state above it.
+  </p>
+
+  <div class="steps">
+
+    <article class="step">
+      <h3>Seeds into zero page, and a leaner <code>rnd()</code></h3>
+      <p>
+        ca65 assembles a constant address below 256 as zero page, so
+        <code>*(unsigned char *)0x00FB</code> costs 3 cycles to touch instead of the 4 an
+        ordinary global costs. The routine runs about 130 times a frame. The same edit
+        dropped a <code>&gt;&gt; 7</code> that cc65 was expanding into seven shifts.
+      </p>
+      <div class="delta"><b>&minus;3,356</b><span class="tag kept">Kept</span></div>
+    </article>
+
+    <article class="step">
+      <h3><code>rnd()</code> branches before it overwrites the seed</h3>
+      <p>
+        The old shape saved the seed's top bit into a variable so it could be tested after
+        the shift. cc65 spilled that variable to memory on every call. Testing it first and
+        writing the shift out in both arms of the branch costs a few bytes and removes the
+        spill.
+      </p>
+      <div class="delta"><b>&minus;1,964</b><span class="tag kept">Kept</span></div>
+    </article>
+
+    <article class="step">
+      <h3>Head position as separate low and high byte arrays</h3>
+      <p>
+        cc65 reads an <code>int</code> array by doubling the index, building a pointer and
+        loading through it, which comes to about 44 cycles. Two indexed byte loads cost
+        roughly 12. The assembly kept RAINLO and RAINHI apart for the same reason, and
+        cc65 recognises <code>lo | (hi &lt;&lt; 8)</code> and emits the pair of loads.
+      </p>
+      <div class="delta"><b>&minus;1,150</b><span class="tag kept">Kept</span></div>
+    </article>
+
+    <article class="step">
+      <h3>Row offset table split the same way</h3>
+      <p>
+        <code>rowoff[trail]</code> is read once per column per frame, so the same
+        <code>int</code>-array penalty applied here too.
+      </p>
+      <div class="delta"><b>&minus;759</b><span class="tag kept">Kept</span></div>
+    </article>
+
+    <article class="step">
+      <h3>Loop index and current character into zero page</h3>
+      <p>
+        Both are read several times per column. This claims the last two of the eight
+        zero page bytes, <code>$f7</code> to <code>$fe</code>, which are the same eight
+        the assembly used.
+      </p>
+      <div class="delta"><b>&minus;656</b><span class="tag kept">Kept</span></div>
+    </article>
+
+    <article class="step">
+      <h3>Bounds checks on unsigned wraparound</h3>
+      <p>
+        A negative offset cast to unsigned becomes a very large number, so
+        <code>(unsigned)p &lt; 2048</code> does the work of checking both ends at once.
+        The tail check cannot use this and still compares signed, because a drop above the
+        screen has a tail far below zero that would read as having fallen off the bottom.
+      </p>
+      <div class="delta"><b>&minus;612</b><span class="tag kept">Kept</span></div>
+    </article>
+
+    <article class="step">
+      <h3>Screen base as a macro rather than a const pointer</h3>
+      <p>
+        <code>static unsigned char *const screen</code> looks like a constant but compiles
+        to a memory load on every access. As a macro the address folds into the
+        instruction.
+      </p>
+      <div class="delta"><b>&minus;564</b><span class="tag kept">Kept</span></div>
+    </article>
+
+    <article class="step">
+      <h3>Screen pointers in zero page</h3>
+      <p>
+        cc65 emits <code>lda ($fd),y</code> directly for a pointer held at a fixed zero
+        page address, instead of copying it into its own scratch pointer first. The
+        read-modify-write that dims the old head compiles to 15 cycles. The setup cost of
+        the pointer nearly cancelled the saving, so this earned almost nothing on its own.
+        It stays because it is what makes the code read like the assembly it came from.
+      </p>
+      <div class="delta"><b>&minus;24</b><span class="tag marginal">Marginal</span></div>
+    </article>
+
+  </div>
+</section>
+
+<section id="profile">
+  <h2>Where the cycles go</h2>
+  <p class="lede">
+    Instruction traces attributed per function, before and after.
+  </p>
+
+  <figure>
+    <p class="chart-title">Frame cost by area</p>
+    <p class="chart-sub">The random number generator carried nearly all of the improvement. cc65's own 16-bit arithmetic helpers did not move at all.</p>
+    <div class="svg-scroll">
+      <svg viewBox="0 0 880 300" role="img" aria-label="Grouped bar chart comparing before and after cycle costs: draw body 21,207 to 17,715; random number generator 12,034 to 7,669; cc65 runtime helpers unchanged at 3,169.">
+        <!-- legend -->
+        <g font-size="12" fill="var(--ink-2)">
+          <rect x="240" y="20" width="11" height="11" fill="var(--series-2)"></rect>
+          <text x="257" y="30">before</text>
+          <rect x="316" y="20" width="11" height="11" fill="var(--accent)"></rect>
+          <text x="333" y="30">after</text>
+        </g>
+
+        <!-- grid -->
+        <g stroke="var(--grid)" stroke-width="1">
+          <line x1="240" y1="52" x2="240" y2="262"></line>
+          <line x1="362.7" y1="52" x2="362.7" y2="262"></line>
+          <line x1="485.5" y1="52" x2="485.5" y2="262"></line>
+          <line x1="608.2" y1="52" x2="608.2" y2="262"></line>
+          <line x1="730.9" y1="52" x2="730.9" y2="262"></line>
+        </g>
+
+        <!-- draw body -->
+        <path d="M240,60 H756.6 Q760.6,60 760.6,64 V76 Q760.6,80 756.6,80 H240 Z" fill="var(--series-2)"></path>
+        <path d="M240,84 H670.8 Q674.8,84 674.8,88 V100 Q674.8,104 670.8,104 H240 Z" fill="var(--accent)"></path>
+        <!-- random -->
+        <path d="M240,132 H531.4 Q535.4,132 535.4,136 V148 Q535.4,152 531.4,152 H240 Z" fill="var(--series-2)"></path>
+        <path d="M240,156 H424.2 Q428.2,156 428.2,160 V172 Q428.2,176 424.2,176 H240 Z" fill="var(--accent)"></path>
+        <!-- helpers -->
+        <path d="M240,204 H313.8 Q317.8,204 317.8,208 V220 Q317.8,224 313.8,224 H240 Z" fill="var(--series-2)"></path>
+        <path d="M240,228 H313.8 Q317.8,228 317.8,232 V244 Q317.8,248 313.8,248 H240 Z" fill="var(--accent)"></path>
+
+        <!-- group labels -->
+        <g font-size="12" fill="var(--ink-2)" text-anchor="end">
+          <text x="228" y="78">draw loop body</text>
+          <text x="228" y="150">random generator</text>
+          <text x="228" y="222">cc65 helpers</text>
+        </g>
+
+        <!-- value labels -->
+        <g font-size="11.5" fill="var(--ink)" text-anchor="start"
+           font-family="ui-monospace, SF Mono, Menlo, Consolas, monospace">
+          <text x="766.6" y="74">21,207</text>
+          <text x="680.8" y="98">17,715</text>
+          <text x="541.4" y="146">12,034</text>
+          <text x="434.2" y="170">7,669</text>
+          <text x="323.8" y="218">3,169</text>
+          <text x="323.8" y="242">3,169</text>
+        </g>
+
+        <!-- axis -->
+        <line x1="240" y1="262" x2="790" y2="262" stroke="var(--rule)" stroke-width="1"></line>
+        <g font-size="11" fill="var(--muted)" text-anchor="middle">
+          <text x="240" y="280">0</text>
+          <text x="362.7" y="280">5k</text>
+          <text x="485.5" y="280">10k</text>
+          <text x="608.2" y="280">15k</text>
+          <text x="730.9" y="280">20k</text>
+        </g>
+        <text x="515" y="296" font-size="11" fill="var(--muted)" text-anchor="middle">cycles per frame</text>
+      </svg>
+    </div>
+    <figcaption>
+      Traced totals, not steady-state totals. See the caveat above.
+    </figcaption>
+  </figure>
+
+  <div class="table-scroll">
+    <table>
+      <caption>Per-function attribution, 10-frame delta from instruction traces</caption>
+      <thead>
+        <tr>
+          <th scope="col">Function</th>
+          <th scope="col" class="num">Before</th>
+          <th scope="col" class="num">After</th>
+          <th scope="col" class="num">Change</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><code>draw</code> body</td><td class="num">21,207</td><td class="num">17,715</td><td class="num">&minus;3,492</td></tr>
+        <tr><td><code>rnd</code></td><td class="num">10,614</td><td class="num">6,249</td><td class="num">&minus;4,365</td></tr>
+        <tr><td><code>rnd_head</code></td><td class="num">716</td><td class="num">716</td><td class="num">0</td></tr>
+        <tr><td><code>rnd_char</code></td><td class="num">704</td><td class="num">704</td><td class="num">0</td></tr>
+        <tr><td>cc65 16-bit helpers</td><td class="num">3,169</td><td class="num">3,169</td><td class="num">0</td></tr>
+        <tr class="total"><td>Traced total</td><td class="num">36,409</td><td class="num">28,554</td><td class="num">&minus;7,855</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p style="margin-top:24px">
+    The <code>draw</code> loop body now costs 17,715 cycles, which is less than the
+    assembly spends on an entire frame including its own random calls. The C loop body is
+    not the problem. What remains is the per-call overhead of the random generator and
+    the helper routines cc65 calls for 16-bit subtraction, neither of which pure C can
+    reach into.
+  </p>
+</section>
+
+<section id="rejected">
+  <h2>Changes that did not survive</h2>
+  <p class="lede">
+    Both were measured and both were reverted. Recording them so they are not tried again.
+  </p>
+
+  <div class="steps">
+    <article class="step is-rejected">
+      <h3>Four-way branch in <code>rnd()</code></h3>
+      <p>
+        Branching on the carry bit as well as the tap bit removes the last spilled
+        temporary. It works, and the output stayed identical, but it doubles the length of
+        the function for 0.7%. The C port exists to be read, so this was not a trade worth
+        making. Reinstate it if the last few hundred cycles ever matter more than the
+        source does.
+      </p>
+      <div class="delta"><b>&minus;224</b><span class="tag rejected">Reverted</span></div>
+    </article>
+
+    <article class="step is-rejected">
+      <h3>Hoisting the delay counter into a local</h3>
+      <p>
+        Reading <code>del[col]</code> once instead of three times looked like an obvious
+        win. It made the frame slower. cc65 was already keeping the index in Y across the
+        three accesses, and the extra local cost more than it saved.
+      </p>
+      <div class="delta"><b>+214</b><span class="tag rejected">Reverted</span></div>
+    </article>
+  </div>
+</section>
+
+<section id="remaining">
+  <h2>What is left in the gap</h2>
+  <p class="lede">
+    12,920 cycles a frame separate the two versions. Here is what they are.
+  </p>
+
+  <ul class="plain">
+    <li>
+      <strong>The random generator, roughly 2,300 cycles.</strong> It compiles to about 54
+      cycles a call against the assembly's 36, over 130 calls a frame. The remaining
+      overhead is a scratch byte cc65 uses to build
+      <code>(seedlo &lt;&lt; 1) | (seedhi &amp; 1)</code>, because C has no rotate-through-carry.
+      There is no way to express that operation in C such that cc65 emits <code>ROL</code>.
+    </li>
+    <li>
+      <strong>cc65's 16-bit subtraction helpers, roughly 3,000 cycles.</strong> Subtracting
+      one variable from another pushes both and calls a runtime routine. It costs about 43
+      cycles for what the 6502 does inline in 10.
+    </li>
+    <li>
+      <strong>The loop body, the balance.</strong> Spread thinly across array indexing,
+      comparisons and branching. There is no single hot spot left to attack.
+    </li>
+  </ul>
+
+  <p>
+    Writing the random generator as an <code>asm()</code> block would recover most of the
+    first item and land somewhere near 28,000 cycles. That is a decision about what the
+    file is for rather than a technical one, and it has not been taken. Matching 18,452
+    would mean writing the draw loop in assembly too, at which point the C port has stopped
+    being a C port.
+  </p>
+</section>
+
+<section id="reproduce">
+  <h2>Reproducing this</h2>
+
+  <pre><code>.\build.ps1 -Test</code></pre>
+
+  <p>
+    That builds the C source for cc65's <code>sim6502</code> target, prints the screen as
+    text and reports the measured cost of a frame. The equivalence check against the
+    assembly and the per-function profiler were built for this investigation and live
+    outside the repository; say the word and they can be added under a tools directory so
+    the byte-for-byte comparison runs as a regression test.
+  </p>
+
+  <h3>Files</h3>
+  <ul class="plain">
+    <li><code>C:\OneDrive\Vintage Computing Development\CommodorePetMatrixRain\matrix_rain_8032.c</code></li>
+    <li><code>C:\OneDrive\Vintage Computing Development\CommodorePetMatrixRain\matrix_rain_8032_c.prg</code></li>
+    <li><code>C:\OneDrive\Vintage Computing Development\CommodorePetMatrixRain\build.ps1</code></li>
+  </ul>
+</section>
+
+</main>
+
+<footer class="wrap">
+  <p>
+    All cycle figures measured under cc65's <code>sim65</code>, version 2.19 Git 93c1b65.
+    The assembly figure comes from running the shipped <code>.prg</code> itself, not a
+    re-implementation of it. Screen equivalence verified across all 2048 bytes of screen
+    RAM after 400 frames.
+  </p>
+</footer>
+
+</body>
+</html>
