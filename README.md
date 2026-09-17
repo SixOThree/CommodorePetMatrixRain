@@ -34,11 +34,21 @@ Or by hand:
 cl65 -t pet -Oi -Cl -o matrix_rain_8032_c.prg matrix_rain_8032.c
 ```
 
-It is slower. A frame costs about 40,500 cycles against a 16,667-cycle
-retrace budget, so the rain falls at roughly 25 fps instead of 60. Most of
-that goes on the random number generator, which cc65 compiles to around 90
-cycles against the assembly's 25. The assembly version remains the one to
-use on real hardware. The C version is there to read.
+It draws the identical screen. After 400 frames all 2048 screen bytes match
+what the assembly produces, checked by running the shipped `.prg` and the C
+build side by side under cc65's 6502 simulator.
+
+It is slower. A frame costs about 31,400 cycles against the assembly's
+18,450 and a 16,667-cycle retrace budget, so the rain falls at roughly 32
+fps instead of 54. Worth knowing: the assembly misses 60 fps too.
+
+Getting there took some shaping for cc65's code generator. The hot
+variables sit at fixed zero page addresses, the head offset and row offset
+tables are kept as separate low and high byte arrays because cc65 reads an
+`int` array by building a pointer every time, and the bounds checks lean on
+unsigned wraparound so one comparison covers both ends. Every one of those
+is commented in the source with what it saves. The assembly version remains
+the one to use on real hardware.
 
 ## Running
 

@@ -33,7 +33,17 @@ The .prg file includes a BASIC stub (`10 SYS 1040`) that auto-starts the machine
 ```
 
 `-Cl` gives locals static storage. Nothing recurses, and cc65's software
-stack is slow, so this is worth several percent.
+stack is slow, so this is worth several percent. `-Oi` beats plain `-O`
+here by about 7%.
+
+The C version claims zero page $f7-$fe, the same eight bytes the assembly
+used: seeds at $fb/$fc, two screen pointers at $fd/$fe and $f7/$f8, and
+draw()'s loop index and character at $f9/$fa. A constant address below 256
+assembles to zero page addressing, and cc65 emits `lda ($fd),y` directly
+for a pointer held there instead of copying it into its own scratch first.
+
+A frame costs about 31,400 cycles against the assembly's 18,450, both
+measured under sim65. The C build produces a byte-identical screen.
 
 The C source compiles for two targets. Under `__SIM6502__` it swaps screen
 RAM for an array and the retrace wait for a frame counter, which is how

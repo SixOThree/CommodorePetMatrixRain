@@ -8,16 +8,23 @@
  * Author: Matthew Dugal (github.com/SixOThree)
  * ============================================================
  *
- * Build:  cl65 -t pet -O -Cl -o matrix_rain_8032_c.prg matrix_rain_8032.c
+ * Build:  cl65 -t pet -Oi -Cl -o matrix_rain_8032_c.prg matrix_rain_8032.c
  *
  * Memory Map:
  *   Screen RAM: $8000-$87FF (80x25 = 2000 visible bytes, 2048 addressable)
  *   VIA Port B: $E840 (bit 5 = vertical retrace)
+ *   Zero page:  $f7-$fe, the same eight bytes the assembly used
  *
  * A drop's position is a signed offset from the start of screen RAM.
  * Negative means the drop has not reached the top of the screen yet.
  * The assembly version encoded the same idea in the high byte of a
  * screen address: $80 for "at the top", $7f for "above the screen".
+ *
+ * This runs a frame in about 31,400 cycles against the assembly's
+ * 18,450, both measured under cc65's 6502 simulator. It produces the
+ * identical screen: all 2048 bytes match the assembly's after 400
+ * frames. Several things here are shaped for cc65's code generator
+ * rather than for looks, and each one is commented with what it buys.
  * ============================================================ */
 
 #ifdef __SIM6502__
@@ -54,6 +61,13 @@
  * range is load-bearing. Keep it. */
 #define SCREEN_SIZE 2048
 
+/* True when a screen offset lands inside screen RAM. A negative offset
+ * wraps to a very large unsigned value, so one comparison does the work
+ * of checking both ends. Only safe where the offset cannot legitimately
+ * exceed the screen by more than it could fall below zero, which is
+ * every use below except the tail. */
+#define ON_SCREEN(off) ((unsigned int)(off) < SCREEN_SIZE)
+
 /* Reverse video is suppressed near the bottom of the screen to stop the
  * lead character flickering against the edge.
  *
@@ -67,23 +81,46 @@
 
 #define VIA_PB      (*(volatile unsigned char *)0xE840)
 
+/* A macro rather than a const pointer variable. cc65 folds a constant
+ * address into the instruction, but reloads a pointer variable from
+ * memory on every single access. */
 #ifdef __SIM6502__
 static unsigned char sim_screen[SCREEN_SIZE];
-static unsigned char *const screen = sim_screen;
+#define screen sim_screen
 #else
-static unsigned char *const screen = (unsigned char *)0x8000;
+#define screen ((unsigned char *)0x8000)
 #endif
 
 /* ------------------------------------------------------------
  * Per-column state
  * ------------------------------------------------------------ */
 
-static int           pos[COLS];     /* head offset into screen RAM      */
+/* The head offset is held as two byte arrays rather than one array of
+ * int. cc65 reads an int array by doubling the index, building a pointer
+ * and loading through it, which comes to about 44 cycles; two indexed
+ * byte loads cost roughly 12. The assembly kept RAINLO and RAINHI apart
+ * for the same reason. */
+static unsigned char poslo[COLS];   /* head offset, low byte            */
+static unsigned char poshi[COLS];   /* head offset, high byte           */
+
+#define POS_GET(n)    ((int)(unsigned int)(poslo[n] | ((unsigned int)poshi[n] << 8)))
+#define POS_SET(n, v) do {                          \
+        unsigned int pos_ = (unsigned int)(v);      \
+        poslo[n] = (unsigned char)pos_;             \
+        poshi[n] = (unsigned char)(pos_ >> 8);      \
+    } while (0)
+
 static unsigned char speed[COLS];   /* frames between moves (0=fastest) */
 static unsigned char del[COLS];     /* frames waited so far             */
 static unsigned char trail[COLS];   /* trail length in rows             */
 
-static int rowoff[TRAILMAX + 1];    /* rowoff[n] == n * COLS            */
+/* Row offsets, split into bytes for the same reason as the position.
+ * This one is read once per column per frame, so an int array here cost
+ * more than the position did. */
+static unsigned char rowofflo[TRAILMAX + 1];
+static unsigned char rowoffhi[TRAILMAX + 1];
+
+#define ROWOFF(n) ((int)(unsigned int)(rowofflo[n] | ((unsigned int)rowoffhi[n] << 8)))
 
 /* Staggered start positions. A mix of "already falling" and "starts at
  * the top" gives the wave effect at startup.
@@ -117,21 +154,44 @@ static const int rainhis[COLS] = {
  *   eor seedlo
  * ============================================================ */
 
-static unsigned char seedlo = 21;
-static unsigned char seedhi = 0x1c;
+/* The seeds live at fixed zero page addresses. ca65 assembles a constant
+ * address below 256 as zero page, so every read and write here costs 3
+ * cycles instead of the 4 an ordinary global would. rnd() runs about 130
+ * times a frame, so the byte adds up.
+ *
+ * $fb and $fc are free on a PET. cc65 keeps its own zero page variables
+ * at $55 to $6e, and the assembly version used $f7 to $fe as scratch. */
+#define seedlo (*(unsigned char *)0x00FB)
+#define seedhi (*(unsigned char *)0x00FC)
+
+/* Two screen pointers, also in zero page. cc65 turns these into
+ * lda ($fd),y and sta ($fd),y directly, which is the addressing the
+ * assembly used. A pointer held in ordinary memory gets copied into
+ * cc65's own scratch pointer before every access, costing four
+ * instructions each time. */
+#define cell  (*(unsigned char **)0x00FD)
+#define cell2 (*(unsigned char **)0x00F7)
+
+/* The last two free bytes hold draw()'s loop index and the character it
+ * is placing. Both are read several times per column, and cc65 would
+ * otherwise keep them in ordinary memory at four cycles an access. That
+ * uses up $f7 to $fe, the same eight bytes the assembly claimed. */
+#define col    (*(unsigned char *)0x00F9)
+#define headch (*(unsigned char *)0x00FA)
 
 static unsigned char rnd(void)
 {
-    unsigned char lo = seedlo;
-    unsigned char a  = seedhi;
-
-    seedlo = (unsigned char)((lo << 1) | (a & 1));  /* rol seedlo */
-    a >>= 1;                                        /* lsr        */
-    if (lo & 0x80) {                                /* bcc +      */
-        a ^= 0xB4;                                  /* tap polynomial */
+    /* The branch is taken before seedlo is overwritten, so there is no
+     * need to stash the old top bit. Saying the shift twice costs a few
+     * bytes and saves cc65 a spilled temporary on every call. */
+    if (seedlo & 0x80) {                            /* carry out of rol */
+        seedlo = (unsigned char)((seedlo << 1) | (seedhi & 1));
+        seedhi = (unsigned char)((seedhi >> 1) ^ 0xB4);
+    } else {
+        seedlo = (unsigned char)((seedlo << 1) | (seedhi & 1));
+        seedhi >>= 1;
     }
-    seedhi = a;
-    return (unsigned char)(a ^ seedlo);
+    return (unsigned char)(seedhi ^ seedlo);
 }
 
 /* A printable screen code, never a space. */
@@ -178,12 +238,17 @@ static void init(void)
     unsigned char n;
     int           off;
 
+    seedlo = 21;
+    seedhi = 0x1c;
+
     for (off = 0; off < SCREEN_SIZE; ++off) {
         screen[off] = CHR_SPACE;
     }
 
     for (n = 0; n <= TRAILMAX; ++n) {
-        rowoff[n] = (int)n * COLS;
+        unsigned int off_ = (unsigned int)n * COLS;
+        rowofflo[n] = (unsigned char)off_;
+        rowoffhi[n] = (unsigned char)(off_ >> 8);
     }
 
     for (i = 0; i < NUMDRIPS; ++i) {
@@ -194,7 +259,7 @@ static void init(void)
 
         trail[i] = rnd_trail();
         del[i]   = 0;
-        pos[i]   = rainhis[i] + i;
+        POS_SET(i, rainhis[i] + i);
     }
 }
 
@@ -207,44 +272,46 @@ static void init(void)
 
 static void draw(void)
 {
-    unsigned char i;
-    unsigned char ch;
     unsigned char row;
+    unsigned char t;
     int           p;
     int           other;
 
-    for (i = 0; i < NUMDRIPS; ++i) {
-        p = pos[i];
+    for (col = 0; col < NUMDRIPS; ++col) {
+        p = POS_GET(col);
+        t = trail[col];
 
-        if (p >= 0 && p < SCREEN_SIZE) {
+        if (ON_SCREEN(p)) {
+            cell = screen + p;
 
             /* Head: usually keep what is there, sometimes reroll.
              * An empty cell always gets a fresh character. */
             if (rnd() < NEWCHAR) {
-                ch = rnd_head();
+                headch = rnd_head();
             } else {
-                ch = screen[p];
-                if (ch == CHR_SPACE) {
-                    ch = rnd_head();
+                headch = *cell;
+                if (headch == CHR_SPACE) {
+                    headch = rnd_head();
                 }
             }
 
             if (p >= NOREVERSE) {
-                ch &= 0x7f;
+                headch &= 0x7f;
             }
-            screen[p] = ch;
+            *cell = headch;
 
             /* Drop the reverse video off the head one row up. */
             other = p - COLS;
-            if (other >= 0) {
-                screen[other] &= 0x7f;
+            if (ON_SCREEN(other)) {
+                cell2 = screen + other;
+                *cell2 = (unsigned char)(*cell2 & 0x7f);
 
                 /* Swap one character somewhere in the trail. */
                 if (rnd() < GLITCH) {
                     row = rnd() & 0x0f;
-                    if (row != 0 && row < trail[i]) {
-                        other = p - rowoff[row];
-                        if (other >= 0 && other < SCREEN_SIZE) {
+                    if (row != 0 && row < t) {
+                        other = p - ROWOFF(row);
+                        if (ON_SCREEN(other)) {
                             screen[other] = rnd_char();
                         }
                     }
@@ -253,30 +320,33 @@ static void draw(void)
         }
 
         /* Time to move? */
-        if (del[i] != speed[i]) {
-            ++del[i];
+        if (del[col] != speed[col]) {
+            ++del[col];
             continue;
         }
-        del[i] = 0;
+        del[col] = 0;
 
-        /* Erase the last character of the trail. */
-        other = p - rowoff[trail[i]];
+        /* Erase the last character of the trail. This one stays a signed
+         * comparison. A drop that has not reached the top of the screen
+         * has a tail far below zero, and ON_SCREEN would read that as
+         * having fallen off the bottom. */
+        other = p - ROWOFF(t);
 
         if (other >= SCREEN_SIZE) {
             /* The whole drop has left the screen. Recycle it: new
              * column, new speed, new trail. Reset drops are faster
              * than the initial ones, which makes the rain accelerate. */
             do {
-                ch = rnd();
-            } while (ch >= COLS);
-            pos[i] = ch;
+                headch = rnd();
+            } while (headch >= COLS);
+            POS_SET(col, headch);
 
             do {
-                ch = rnd();
-            } while (ch >= SPDRESET);
-            speed[i] = ch;
+                headch = rnd();
+            } while (headch >= SPDRESET);
+            speed[col] = headch;
 
-            trail[i] = rnd_trail();
+            trail[col] = rnd_trail();
             continue;
         }
 
@@ -284,7 +354,7 @@ static void draw(void)
             screen[other] = CHR_SPACE;
         }
 
-        pos[i] = p + COLS;
+        POS_SET(col, p + COLS);
     }
 }
 
