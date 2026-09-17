@@ -71,8 +71,10 @@ Write-Host ("Built {0} ({1:n0} bytes)" -f $output, (Get-Item $output).Length)
 if ($Run) {
     if (-not (Test-Path $xpet)) { throw "xpet not found at $xpet. Pass -Vice <path to VICE>." }
     # Start-Process rather than a background job: VICE runs until closed,
-    # and this keeps it off this console.
-    Start-Process $xpet -ArgumentList '-model', '8032', '-autostart',
-        (Join-Path $PSScriptRoot $output) | Out-Null
-    Write-Host 'Launched in VICE xpet.'
+    # and this keeps it off this console. The .prg path is quoted by hand
+    # because Start-Process will not do it, and this repo lives under a
+    # path with a space in it.
+    $prg = '"{0}"' -f (Join-Path $PSScriptRoot $output)
+    $proc = Start-Process $xpet -ArgumentList '-model', '8032', '-autostart', $prg -PassThru
+    Write-Host ("Launched in VICE xpet (PID {0}). Close the window to stop it." -f $proc.Id)
 }
