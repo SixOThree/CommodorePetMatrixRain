@@ -57,6 +57,52 @@ unsigned wraparound so one comparison covers both ends. Every one of those
 is commented in the source with what it saves. The assembly version remains
 the one to use on real hardware.
 
+## The Color Computer version
+
+`matrix_rain_coco.asm` is the effect on the TRS-80 Color Computer 1 and 2,
+in 6809 assembly. It uses the CoCo's 32×16 text screen: bright green letters
+on a black screen, with the odd green graphics block that keeps flickering
+through new patterns as its trail falls. A highlighted lead shows as a dark
+letter on a bright green cell, and a highlighted block turns buff.
+
+Load it from disk with `LOADM"MATRIX":EXEC`, or from tape with
+`CLOADM"MATRIX":EXEC`. It needs 16K and runs until you press reset.
+
+```powershell
+.\build-coco.ps1         # writes matrix_rain_coco.bin, .cas and .dsk
+.\build-coco.ps1 -Run    # and opens the .bin in XRoar
+.\build-coco.ps1 -Test   # checks it in XRoar against matrix_rain_coco.c
+```
+
+Building needs [LWTOOLS](http://www.lwtools.ca/). Running and testing need
+[XRoar](https://www.6809.org.uk/xroar/) with CoCo ROMs, and cc65 for the
+reference model the test compares against.
+
+The algorithm is the PET's, with the same random number generator, seed and
+steps for each drop. Two things differ. Speeds and columns are drawn from
+0 to 31 before the reroll, as trail lengths always were, because rerolling a
+whole byte until it fell under 5 made about one frame in 80 miss the 60 Hz
+deadline. And each frame sweeps a quarter of the screen, giving the green
+blocks it finds a chance at a new pattern.
+
+A frame takes at most about two thirds of the time between screen refreshes,
+so it holds 60 fps. The settings are tuned for the smaller screen and sit at
+the top of both `matrix_rain_coco.asm` and `matrix_rain_coco.c`, which have
+to agree:
+
+| Variable | CoCo default |
+|----------|--------------|
+| GLITCH   | 64 |
+| TRAILMIN | 6 |
+| TRAILMAX | 14 |
+| REVERSE  | 64 |
+| NEWCHAR  | 51 |
+| NUMDRIPS | 28 (max 32) |
+| SPDSTART | 9 (max 32) |
+| SPDRESET | 5 (max 32) |
+| GRAPHIC  | 16: the chance, out of 256, that a new character is a graphics block |
+| BLOCKGLITCH | 128: the chance, out of 256, that a block changes each time the sweep reaches it, every 4 frames |
+
 ## Running
 
 Load the .prg file on a Commodore PET 8032 or emulator (such as [VICE xpet](https://vice-emu.sourceforge.io/)):
