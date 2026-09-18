@@ -853,7 +853,9 @@ function New-CocoDsk {
     $granule  = 9 * $sector
     [byte[]] $disk = @(0xFF) * (35 * $perTrack * $sector)
 
-    function Get-Offset([int] $Track, [int] $Sector) { ($Track * $perTrack + $Sector - 1) * $sector }
+    # PowerShell names are case-insensitive, so the sector number must not
+    # be called $Sector: it would hide the sector size above.
+    function Get-Offset([int] $Track, [int] $Number) { ($Track * $perTrack + $Number - 1) * $sector }
     function Get-GranuleOffset([int] $G) {
         $track = [int] [Math]::Floor($G / 2)
         if ($track -ge 17) { $track++ }
