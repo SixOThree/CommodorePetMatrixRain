@@ -103,6 +103,37 @@ to agree:
 | GRAPHIC  | 16: the chance, out of 256, that a new character is a graphics block |
 | BLOCKGLITCH | 128: the chance, out of 256, that a block changes each time the sweep reaches it, every 4 frames |
 
+## The Color Computer 3 version
+
+`matrix_rain_coco3.asm` is the effect in colour on the TRS-80 Color
+Computer 3, using its hardware text mode, where every character has its
+own colours. Each trail fades from a white head through bright green and
+green to dark green, and accented letters flicker through the trails in
+place of the CoCo 1/2's graphics blocks. It runs the CPU at 1.79 MHz.
+
+There are two builds:
+
+- `MATRIX3`: 80×24 with 65 drops, for an RGB monitor such as the CM-8.
+  The PET's 70 drops miss the 60 Hz frame now and then.
+- `MATRIX3C`: 40×24 with 40 drops, for a TV or composite monitor.
+  A composite colour signal can't carry 80 columns.
+
+Load one with `LOADM"MATRIX3":EXEC` (the disk holds both) or
+`CLOADM"MATRIX3":EXEC` from its tape image. It runs until you press
+reset.
+
+```powershell
+.\build-coco3.ps1                  # writes both builds, their tapes and the disk
+.\build-coco3.ps1 -Run             # opens the RGB build in XRoar
+.\build-coco3.ps1 -Run -Composite  # opens the composite build
+.\build-coco3.ps1 -Test            # checks both in XRoar against matrix_rain_coco3.c
+```
+
+The settings sit at the top of `matrix_rain_coco3.asm` and
+`matrix_rain_coco3.c`, one block per build, and the two files have to
+agree. They start from the PET 8032's (RGB) and 4032's (composite), with
+trails capped at 23 rows.
+
 ## Running
 
 Load the .prg file on a Commodore PET 8032 or emulator (such as [VICE xpet](https://vice-emu.sourceforge.io/)):

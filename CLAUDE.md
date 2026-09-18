@@ -107,6 +107,37 @@ XRoar 1.9 behaviours the tests depend on:
   sync wait (the `synced` label), or a frame's total is off by the
   difference between consecutive frames' work.
 
+### CoCo 3 version
+
+`matrix_rain_coco3.asm` is the CoCo 3 port: GIME attribute text at
+1.79 MHz, `-D COMPOSITE` for the 40-column composite build (default 80
+columns, RGB). `matrix_rain_coco3.c` is its reference, with the same
+switch; change both together.
+
+```powershell
+.\build-coco3.ps1 [-Run [-Composite]] [-Test]
+```
+
+- The screen is at `$2000`, which is physical `$72000` in BASIC's memory
+  map. It has 2 bytes a cell: the character, then an attribute. The
+  attribute's foreground is in bits 5–3 (palette slots 8–15) and its
+  background in bits 2–0 (slots 0–7).
+- The GIME values come from BASIC's `WIDTH 80`/`40`: `$FF90`=`$4C`,
+  `$FF98`=`$03`, `$FF99`=`$15`/`$05`, and `$FF9D`/`$FF9E`=`$E4`/`$00`.
+  These registers are write-only.
+- An empty cell is a space in `DARK`, not `HEAD`. Otherwise a glitch into
+  a gap left by another drop's tail draws a stray white character.
+- The RGB build runs 65 drops. At 70 it misses the field a few times a
+  minute, even with the inline random step (`RAND`) and the four-cell
+  flicker loop. `-Test` samples only 10 frames, so check a longer run
+  before raising `NUMDRIPS` or adding work per drop.
+- Test on `-machine coco3 -ram 512`. A snapshot holds RAM in physical
+  order, with logical `$0000` at `$70000`. A field is 29,982 cycles, and
+  trace `dt` is eighths of a cycle (`Measure-XRoarTrace -TicksPerCycle 8`).
+- On XRoar's true composite modes (`-tv-input cmp-br`/`cmp-rb`), 80
+  columns turns to coloured dots. `cmp` is really S-video.
+- `lwasm -D` values are decimal only.
+
 ## Architecture
 
 ### Memory Layout
