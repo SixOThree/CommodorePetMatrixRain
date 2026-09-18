@@ -1,10 +1,11 @@
-# Commodore PET Matrix Rain
+# Vintage Computing Matrix Rain
 
-A Matrix-style falling character animation for the Commodore PET 8032 (80-column display).
+A Matrix-style falling character animation for vintage computers: the
+Commodore PET 8032 and 4032, and the TRS-80 Color Computer 1, 2 and 3.
 
 ## About
 
-This 6502 assembly program recreates the iconic "digital rain" effect from The Matrix on vintage Commodore PET hardware. Features include:
+The original, in 6502 assembly for the Commodore PET, recreates the iconic "digital rain" effect from The Matrix on vintage hardware. Features include:
 
 - 80 independent rain columns with configurable speed and trail length
 - Trail "glitch" effect for visual interest
