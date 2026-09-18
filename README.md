@@ -67,6 +67,8 @@ letter on a bright green cell, and a highlighted block turns buff.
 
 Load it from disk with `LOADM"MATRIX":EXEC`, or from tape with
 `CLOADM"MATRIX":EXEC`. It needs 16K and runs until you press reset.
+To run it in the XRoar emulator, follow
+[Running in XRoar](docs/running-in-xroar.html).
 
 ```powershell
 .\build-coco.ps1         # writes matrix_rain_coco.bin, .cas and .dsk
@@ -120,7 +122,8 @@ There are two builds:
 
 Load one with `LOADM"MATRIX3":EXEC` (the disk holds both) or
 `CLOADM"MATRIX3":EXEC` from its tape image. It runs until you press
-reset.
+reset. [Running in XRoar](docs/running-in-xroar.html) covers both builds,
+including which TV input each one needs.
 
 ```powershell
 .\build-coco3.ps1                  # writes both builds, their tapes and the disk
@@ -144,6 +147,16 @@ RUN
 ```
 
 The program includes a BASIC stub that automatically starts the machine code.
+
+### Emulator guides
+
+Step-by-step guides, with screenshots of what you should see:
+
+- [Running in VICE](docs/running-in-vice.html): the PET versions, on a PET 8032 or 4032.
+- [Running in XRoar](docs/running-in-xroar.html): the Color Computer 1/2 and 3 versions, including the ROMs XRoar needs.
+
+They're HTML pages. GitHub shows their source, so open them in a browser
+from a clone or a download of the repository.
 
 ## Configuration
 
