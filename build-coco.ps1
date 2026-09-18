@@ -189,15 +189,20 @@ if ($Test) {
     $trace = Invoke-XRoar -XRoar $XRoar -WorkDir $work -Machine $Machine -Log 'test111.trace' -EmulatedSeconds 20 -Arguments @(
         '-trace-timing', '-run', (ConvertTo-XRoarPath $timed.Bin),
         '-trap', ('pc=0x{0:X4}' -f $timed.Labels['mainloop']), '-trap-range', '101', '-trap-trace',
-        '-trap', ('pc=0x{0:X4}' -f $timed.Labels['testdone']), '-trap-timeout', '1')
+        '-trap', ('pc=0x{0:X4}' -f $timed.Labels['testdone']), '-trap-timeout', '0')
     $wait = $timed.Labels['waitsync']
     $perFrame = @(Measure-XRoarTrace -Trace $trace -FrameStart $timed.Labels['synced'] -Stop $timed.Labels['testdone'] -Idle @($wait, ($wait + 3)))
     Remove-Item $trace
     if ($perFrame.Count -ne 10) { throw "Expected 10 traced frames, got $($perFrame.Count)." }
+    # A frame that overruns lasts two fields, so the field is the shortest
+    # frame, not the average.
     $busy  = $perFrame | Measure-Object Busy -Average -Maximum
-    $field = ($perFrame | Measure-Object Total -Average).Average
-    Write-Host ('Frame cost: {0:n0} cycles on average, {1:n0} at most, of a {2:n0}-cycle frame ({3:p0} at most)' -f `
+    $field = ($perFrame | Measure-Object Total -Minimum).Minimum
+    $late  = @($perFrame | Where-Object { $_.Total -gt 1.5 * $field }).Count
+    Write-Host ('Frame cost: {0:n0} cycles on average, {1:n0} at most, of a {2:n0}-cycle field ({3:p0} at most)' -f `
         $busy.Average, $busy.Maximum, $field, ($busy.Maximum / $field))
-    if ($busy.Maximum -gt $field) { Write-Warning 'A frame took longer than a field, so the rain runs below 60 fps.' }
+    if ($late -or $busy.Maximum -gt $field) {
+        Write-Warning "$late of $($perFrame.Count) frames took longer than a field, so the rain misses 60 fps."
+    }
     return
 }

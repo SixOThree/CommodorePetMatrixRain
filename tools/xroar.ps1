@@ -24,7 +24,10 @@
       - A trap that starts tracing acts on the exact instruction, but
         one that stops tracing does nothing. A trace therefore runs
         until XRoar exits, and Measure-XRoarTrace stops reading at a
-        given address.
+        given address. End a trace run with -trap-timeout 0 on the last
+        trap, which quits at once (a 1-second timeout traces a second
+        more: 600,000 lines at 1.79 MHz). Never with -trap-snap, whose
+        snapshot is written later than that.
 #>
 
 function ConvertTo-XRoarPath([string] $Path) {

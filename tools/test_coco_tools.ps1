@@ -186,7 +186,7 @@ if ((Test-Path (Join-Path $Roms 'disk11.rom')) -or (Test-Path (Join-Path $Roms '
 $trace = Invoke-XRoar -XRoar $XRoar -WorkDir $work -Log 'fill.trace' -Arguments @(
     '-trace-timing', '-run', (ConvertTo-XRoarPath $bin),
     '-trap', ('pc=0x{0:X4}' -f $labels['mainloop']), '-trap-range', '2', '-trap-trace',
-    '-trap', ('pc=0x{0:X4}' -f $labels['done']), '-trap-timeout', '1')
+    '-trap', ('pc=0x{0:X4}' -f $labels['done']), '-trap-timeout', '0')
 $wait = $labels['waitsync']
 $frames = @(Measure-XRoarTrace -Trace $trace -FrameStart $labels['mainloop'] -Stop $labels['done'] -Idle @($wait, ($wait + 3)))
 Remove-Item $trace
@@ -225,7 +225,7 @@ $fastLabels = Read-LwasmSymbols $fastSym
 $trace3 = Invoke-XRoar -XRoar $XRoar -WorkDir $work -Machine 'coco3' -Log 'fillfast.trace' -Arguments @(
     '-ram', '512', '-trace-timing', '-run', (ConvertTo-XRoarPath $fast),
     '-trap', ('pc=0x{0:X4}' -f $fastLabels['mainloop']), '-trap-range', '2', '-trap-trace',
-    '-trap', ('pc=0x{0:X4}' -f $fastLabels['done']), '-trap-timeout', '1')
+    '-trap', ('pc=0x{0:X4}' -f $fastLabels['done']), '-trap-timeout', '0')
 $wait3 = $fastLabels['waitsync']
 $frames3 = @(Measure-XRoarTrace -Trace $trace3 -FrameStart $fastLabels['mainloop'] -Stop $fastLabels['done'] `
     -Idle @($wait3, ($wait3 + 3)) -TicksPerCycle 8)
