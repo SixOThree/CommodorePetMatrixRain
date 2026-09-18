@@ -93,7 +93,11 @@ drop's trail, it gets `HEAD`. No `REVHEAD` on the bottom row.
 **Characters.** A letter is printable ASCII `$21`-`$7E`: `random & $7F`,
 rerolled while below `$21` or equal to `$7F`. With the `GRAPHIC` chance a
 new character is instead a foreign letter, `random & $1F`. An empty cell is
-a space with attribute `HEAD`, which shows as black.
+a space with attribute `DARK`, which shows as black. (Found while planning:
+with `HEAD` there, a tail erased in the middle of another drop's trail left
+a white gap attribute, and a trail glitch landing in it drew a stray white
+character; the reference model showed 3 to 13 of them at any time. With
+`DARK` it showed none.)
 
 **Flicker.** Each frame a sweep covers an eighth of the screen, a different
 eighth each time, so every cell is visited every 8 frames. A foreign letter
@@ -120,7 +124,7 @@ and the stack sit between there and the screen at `$2000`.
    is written whole; `$4C` is exactly what BASIC writes, keeping memory
    mapping on and the ROM mapped as BASIC has it. Then load the 16
    palette slots (`$FFB0`-`$FFBF`).
-4. Clear the screen to spaces with `HEAD`, seed the random number
+4. Clear the screen to spaces with `DARK`, seed the random number
    generator and set up the drops, as the PET does.
 
 **Frame timing.** The same wait on PIA 0's field sync flag (`$FF03` bit 7,
