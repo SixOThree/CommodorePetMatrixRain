@@ -10,8 +10,19 @@ This is a 6502 assembly language project that creates a Matrix-style falling cha
 
 Build with ACME cross-assembler:
 ```bash
-acme -o matrix_rain_8032_noclock_v8.prg matrix_rain_8032_noclock_v8.asm
+acme -f cbm -o matrix_rain_8032_noclock_v8.prg matrix_rain_8032_noclock_v8.asm
 ```
+
+ACME isn't installed on this machine. C64 Studio's command-line assembler is,
+and with ACME syntax it rebuilds both committed PET `.prg` files byte for byte:
+
+```powershell
+& 'C:\OneDrive\Vintage Computing Development\C64StudioRelease\net8.0-windows\C64Ass\C64Ass.exe' -A ACME -F CBM -O matrix_rain_8032_noclock_v8.prg matrix_rain_8032_noclock_v8.asm
+```
+
+`docs/` holds four self-contained HTML guides: running the rain in VICE and in
+XRoar, and building for the PET and for the CoCo. Keep their commands and
+sample output in step with the scripts.
 
 Run on Commodore PET or emulator (VICE xpet):
 ```

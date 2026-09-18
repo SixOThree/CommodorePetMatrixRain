@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Building for the PET</title>
+<style>
+  :root {
+    --ground: #f3f6f1;
+    --surface: #ffffff;
+    --ink: #17201a;
+    --muted: #55625a;
+    --line: #d3dcd2;
+    --accent: #1b6b36;
+    --accent-ink: #f3faf4;
+    --accent-soft: #e0eee3;
+    --code: #ecf1ea;
+    --note: #7d5200;
+    --note-soft: #fbf1dc;
+    --note-line: #ecd6a8;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0d1210;
+      --surface: #141b17;
+      --ink: #dce6de;
+      --muted: #93a297;
+      --line: #27332b;
+      --accent: #5ccf7f;
+      --accent-ink: #0a130d;
+      --accent-soft: #19301f;
+      --code: #101814;
+      --note: #e5b25a;
+      --note-soft: #2a2213;
+      --note-line: #4a3a1c;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0d1210;
+    --surface: #141b17;
+    --ink: #dce6de;
+    --muted: #93a297;
+    --line: #27332b;
+    --accent: #5ccf7f;
+    --accent-ink: #0a130d;
+    --accent-soft: #19301f;
+    --code: #101814;
+    --note: #e5b25a;
+    --note-soft: #2a2213;
+    --note-line: #4a3a1c;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-padding-top: 4.5rem; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font: 15px/1.6 system-ui, "Segoe UI", -apple-system, "Helvetica Neue", Arial, sans-serif;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; padding-inline: 16px; }
+  code, kbd, pre { font-family: ui-monospace, "Cascadia Mono", Consolas, "SF Mono", Menlo, monospace; }
+  code { font-size: 0.9em; background: var(--code); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; overflow-wrap: anywhere; }
+  code.nw { white-space: nowrap; }
+  a { color: var(--accent); text-underline-offset: 2px; }
+  a:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+  h1, h2, h3 { text-wrap: balance; line-height: 1.2; }
+
+  /* Masthead */
+  .masthead { background: var(--accent); color: var(--accent-ink); padding-block: 36px 30px; }
+  .masthead .eyebrow { margin: 0 0 6px; font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.85; }
+  .masthead h1 { margin: 0; font-size: clamp(1.9rem, 1.3rem + 2.2vw, 2.8rem); font-weight: 760; letter-spacing: -0.015em; }
+  .masthead .lede { margin: 10px 0 0; max-width: 62ch; font-size: 1.07rem; opacity: 0.95; }
+  .masthead code {
+    color: inherit; background: color-mix(in srgb, var(--accent-ink) 14%, transparent);
+    border-color: color-mix(in srgb, var(--accent-ink) 30%, transparent);
+  }
+  .facts { display: flex; flex-wrap: wrap; gap: 10px 32px; margin: 22px 0 0; padding: 0; }
+  .facts div { display: grid; gap: 1px; }
+  .facts dt { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.8; }
+  .facts dd { margin: 0; font-weight: 600; }
+
+  /* Sticky table of contents */
+  .toc {
+    position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+    background: var(--surface); border-bottom: 1px solid var(--line);
+  }
+  .toc ol { display: flex; gap: 4px 18px; margin: 0; padding: 10px 0; list-style: none; overflow-x: auto; white-space: nowrap; font-size: 14px; scrollbar-width: thin; }
+  .toc a { color: var(--muted); text-decoration: none; }
+  .toc a:hover { color: var(--accent); text-decoration: underline; }
+
+  main { padding-block: 8px 48px; }
+  section { padding-top: 26px; }
+  h2 { margin: 0 0 10px; font-size: 1.45rem; font-weight: 720; }
+  h3 { margin: 22px 0 8px; font-size: 1.08rem; font-weight: 680; }
+  p, li { max-width: 72ch; }
+  .muted { color: var(--muted); }
+
+  /* Menu paths and keys */
+  .menu {
+    display: inline-block; white-space: nowrap; font-weight: 600; font-size: 0.93em;
+    background: var(--accent-soft); border: 1px solid var(--line); border-radius: 5px; padding: 0 7px;
+  }
+  .sep { color: var(--muted); padding-inline: 3px; }
+  kbd {
+    font-size: 0.85em; background: var(--surface); border: 1px solid var(--line); border-bottom-width: 2px;
+    border-radius: 4px; padding: 0 5px; white-space: nowrap;
+  }
+
+  /* Numbered steps: a real sequence */
+  ol.steps { list-style: none; counter-reset: step; margin: 14px 0 0; padding: 0; display: grid; gap: 14px; }
+  ol.steps > li {
+    counter-increment: step; position: relative; max-width: none; min-width: 0;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+    padding: 14px 16px 14px 58px;
+  }
+  ol.steps > li::before {
+    content: counter(step); position: absolute; left: 14px; top: 13px;
+    width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
+    background: var(--accent); color: var(--accent-ink); font-weight: 700; font-size: 14px;
+  }
+  ol.steps > li > :first-child { margin-top: 3px; }
+  ol.steps > li > :last-child { margin-bottom: 0; }
+  ol.steps p { margin: 6px 0; }
+
+  /* Tables, code and screenshots each scroll in their own box */
+  .table-wrap { overflow-x: auto; margin: 12px 0; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; vertical-align: top; padding: 10px 12px; }
+  th { font-size: 11.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 650; border-bottom: 1px solid var(--line); }
+  td { border-top: 1px solid var(--line); }
+  tr:first-child td { border-top: 0; }
+  td code { white-space: nowrap; }
+
+  .code { overflow-x: auto; margin: 10px 0; background: var(--code); border: 1px solid var(--line); border-radius: 8px; }
+  .code pre { margin: 0; padding: 12px 14px; font-size: 13.5px; line-height: 1.55; }
+  .code .label { padding: 8px 14px 0; font-size: 12px; font-weight: 650; color: var(--muted); }
+  .code .label + pre { padding-top: 6px; }
+  td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  .shots { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); margin: 16px 0 0; }
+  figure { margin: 0; }
+  figure img { display: block; max-width: 100%; height: auto; border: 1px solid var(--line); border-radius: 8px; background: #000; }
+  figcaption { margin-top: 6px; font-size: 13.5px; color: var(--muted); }
+
+  /* Callouts */
+  .callout { margin: 14px 0; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); }
+  .callout.caution { background: var(--note-soft); border-color: var(--note-line); }
+  .callout.key { background: var(--accent-soft); }
+  .callout.key .tag { background: var(--accent); color: var(--accent-ink); }
+  .callout p { margin: 4px 0; }
+  .tag {
+    display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+    border-radius: 999px; padding: 1px 9px; background: var(--note); color: var(--surface);
+  }
+
+  dl.trouble { margin: 10px 0 0; display: grid; gap: 12px; }
+  dl.trouble dt { font-weight: 650; }
+  dl.trouble dd { margin: 2px 0 0; max-width: 72ch; }
+
+  footer { border-top: 1px solid var(--line); padding-block: 18px 32px; font-size: 13.5px; color: var(--muted); }
+
+  @media (max-width: 560px) {
+    ol.steps > li { padding: 12px 12px 12px 50px; }
+    ol.steps > li::before { left: 11px; width: 28px; height: 28px; }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    html { scroll-behavior: smooth; }
+  }
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="wrap">
+    <p class="eyebrow">Commodore PET Matrix Rain</p>
+    <h1>Building for the PET</h1>
+    <p class="lede">How to change the Commodore PET versions of the rain, rebuild their
+      <code class="nw">.prg</code> files, and check that the C version still draws exactly what the
+      assembly does.</p>
+    <dl class="facts">
+      <div><dt>Assembler</dt><dd>ACME, or C64 Studio's C64Ass</dd></div>
+      <div><dt>C compiler</dt><dd>cc65 2.19</dd></div>
+      <div><dt>Checked</dt><dd>18 September 2026, Windows 11</dd></div>
+    </dl>
+  </div>
+</header>
+
+<nav class="toc" aria-label="Contents">
+  <div class="wrap">
+    <ol>
+      <li><a href="#short">Short version</a></li>
+      <li><a href="#files">Files</a></li>
+      <li><a href="#tools">Tools</a></li>
+      <li><a href="#settings">Settings</a></li>
+      <li><a href="#asm">Assembly</a></li>
+      <li><a href="#c">C version</a></li>
+      <li><a href="#check">Checking</a></li>
+      <li><a href="#code">Changing the code</a></li>
+      <li><a href="#trouble">Troubleshooting</a></li>
+    </ol>
+  </div>
+</nav>
+
+<main class="wrap">
+
+<section id="short">
+  <h2>The short version</h2>
+  <p>Run these from the repository folder, in PowerShell 7.</p>
+  <ol class="steps">
+    <li>
+      <p>Change a setting in <code>matrix_rain_8032_noclock_v8.asm</code>, and the same
+        setting in <code class="nw">matrix_rain_8032.c</code>. See <a href="#settings">Change the
+        settings</a>.</p>
+    </li>
+    <li>
+      <p>Assemble the <code class="nw">.prg</code>:</p>
+      <div class="code"><pre>acme -f cbm -o matrix_rain_8032_noclock_v8.prg matrix_rain_8032_noclock_v8.asm</pre></div>
+    </li>
+    <li>
+      <p>Build the C version and check that the two still match:</p>
+      <div class="code"><pre>.\build.ps1 -Test</pre></div>
+    </li>
+    <li>
+      <p>Watch it run. <code class="nw">.\build.ps1 -Run</code> opens the C version in VICE; for the
+        assembly version, see <a href="running-in-vice.html">Matrix Rain in VICE</a>.</p>
+    </li>
+    <li>
+      <p>Commit the sources and the rebuilt <code class="nw">.prg</code> files together.</p>
+    </li>
+  </ol>
+</section>
+
+<section id="files">
+  <h2>The files</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Source</th><th>Builds</th><th>With</th><th>What it is</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>matrix_rain_8032_noclock_v8.asm</code></td>
+          <td><code>matrix_rain_8032_noclock_v8.prg</code></td>
+          <td>ACME</td>
+          <td>The original, in 6502 assembly: 80 columns, 70 drops. The C version's test
+            compares against this <code class="nw">.prg</code>.</td>
+        </tr>
+        <tr>
+          <td><code class="nw">matrix_rain_4032.asm</code></td>
+          <td><code class="nw">matrix_rain_4032.prg</code></td>
+          <td>ACME</td>
+          <td>The 40-column version. It has no C version and no automated test.</td>
+        </tr>
+        <tr>
+          <td><code class="nw">matrix_rain_8032.c</code></td>
+          <td><code class="nw">matrix_rain_8032_c.prg</code></td>
+          <td>cc65, through <code class="nw">build.ps1</code></td>
+          <td>The 8032 version in C. It draws the same screen, more slowly.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p>The <code class="nw">.prg</code> files are committed next to their sources, so anyone can run
+    them without building anything. After a change, rebuild the <code class="nw">.prg</code> and
+    commit it with the source.</p>
+  <p>In the <code class="nw">tools</code> folder, <code class="nw">asm_harness.c</code>, <code class="nw">asm_blob.s</code>
+    and <code class="nw">sim_asm.cfg</code> run the 8032 <code class="nw">.prg</code> inside cc65's 6502
+    simulator for the test, and <code class="nw">profile.ps1</code> shows where the C version's time
+    goes.</p>
+</section>
+
+<section id="tools">
+  <h2>Tools</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Tool</th><th>Needed for</th><th>Where to get it</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>ACME, or C64 Studio</td>
+          <td>The two assembly versions</td>
+          <td>ACME from <a href="https://sourceforge.net/projects/acme-crossass/">sourceforge.net/projects/acme-crossass</a>.
+            <a href="https://github.com/GeorgRottensteiner/C64Studio">C64 Studio</a>, which
+            this project was written in, includes an assembler that reads the same source:
+            <code class="nw">C64Ass.exe</code>, in its <code class="nw">C64Ass</code> folder.</td>
+        </tr>
+        <tr>
+          <td>cc65</td>
+          <td>The C version and the test</td>
+          <td><a href="https://cc65.github.io/">cc65.github.io</a>. Download the Windows
+            snapshot and unzip it anywhere.</td>
+        </tr>
+        <tr>
+          <td>VICE</td>
+          <td>Running what you build</td>
+          <td>See <a href="running-in-vice.html">Matrix Rain in VICE</a>.</td>
+        </tr>
+        <tr>
+          <td>PowerShell 7</td>
+          <td><code class="nw">build.ps1</code> and the scripts in <code class="nw">tools</code></td>
+          <td><code>winget install Microsoft.PowerShell</code>, then run
+            <code class="nw">pwsh</code>.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p><code class="nw">build.ps1</code> looks for cc65 in
+    <code>C:\Development\_VintageDevelopment\cc65_snapshot</code> and for VICE in
+    <code>C:\This Computer\bin\GTK3VICE-3.9-win64</code>, where they are on the machine
+    it was written on. If yours are elsewhere, say where. <code class="nw">-Cc65</code> is the folder
+    that holds <code class="nw">bin\cl65.exe</code>, and <code class="nw">-Vice</code> the one that holds
+    <code class="nw">bin\xpet.exe</code>:</p>
+  <div class="code"><pre>.\build.ps1 -Test -Cc65 D:\cc65 -Vice D:\GTK3VICE-3.9-win64</pre></div>
+</section>
+
+<section id="settings">
+  <h2>Change the settings</h2>
+  <p>Eight numbers shape the rain. In the assembly they are data bytes at the end of the
+    file, under <code class="nw">Configuration Variables</code>:</p>
+  <div class="code"><div class="label">matrix_rain_8032_noclock_v8.asm</div><pre>GLITCH   !byte 64              ; trail glitch frequency (0=off, 255=constant)
+TRAILMIN !byte 10              ; minimum trail length (rows)
+TRAILMAX !byte 24              ; maximum trail length (rows)
+REVERSE  !byte 64              ; reverse video chance (0=never, 255=always)
+NEWCHAR  !byte 51              ; new char chance (lower=more flicker)
+NUMDRIPS !byte 70              ; active columns (max 80, try 70 for gaps)
+SPDSTART !byte 9               ; initial speed range (0 to N-1, lower=faster)
+SPDRESET !byte 5               ; reset speed range (0 to N-1, lower=faster)</pre></div>
+  <p>In <code class="nw">matrix_rain_8032.c</code> they are the <code class="nw">#define</code> lines at the top,
+    with the same names.</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Setting</th><th>8032</th><th>4032</th><th>What it controls</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code class="nw">GLITCH</code></td><td class="num">64</td><td class="num">64</td><td>How often a drop swaps a character in its trail for a new one: the chance out of 256, each frame. 0 turns it off.</td></tr>
+        <tr><td><code class="nw">TRAILMIN</code></td><td class="num">10</td><td class="num">14</td><td>The shortest trail, in rows. Each drop picks a length when it starts.</td></tr>
+        <tr><td><code class="nw">TRAILMAX</code></td><td class="num">24</td><td class="num">24</td><td>The longest trail, in rows.</td></tr>
+        <tr><td><code class="nw">REVERSE</code></td><td class="num">64</td><td class="num">64</td><td>The chance out of 256 that a new head character is in reverse video.</td></tr>
+        <tr><td><code class="nw">NEWCHAR</code></td><td class="num">51</td><td class="num">51</td><td>The chance out of 256 that a head changes to a new character on a given frame. Higher flickers more. (The comment in the source says lower; the code does the opposite.)</td></tr>
+        <tr><td><code class="nw">NUMDRIPS</code></td><td class="num">70</td><td class="num">40</td><td>How many drops fall at once: at most 80 on the 8032 and 40 on the 4032. Fewer than the number of columns leaves gaps.</td></tr>
+        <tr><td><code class="nw">SPDSTART</code></td><td class="num">9</td><td class="num">15</td><td>Each drop's first speed is picked from 0 up to one less than this. A speed is the number of frames a drop waits between moves, so lower is faster.</td></tr>
+        <tr><td><code class="nw">SPDRESET</code></td><td class="num">5</td><td class="num">8</td><td>The same, for a drop starting again at the top. Lower than <code class="nw">SPDSTART</code> makes the rain speed up after the first wave.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout caution">
+    <p><span class="tag">Values that stall it</span></p>
+    <p><code class="nw">SPDSTART</code> and <code class="nw">SPDRESET</code> must be at least 1, and
+      <code class="nw">TRAILMAX</code> at least <code class="nw">TRAILMIN</code>. Otherwise the program keeps
+      rerolling a speed or a trail length that can never fit, the screen clears, and
+      nothing falls.</p>
+  </div>
+
+  <div class="callout key">
+    <p><span class="tag">Change both 8032 files</span></p>
+    <p><code class="nw">build.ps1 -Test</code> runs the assembly and the C version from the same
+      starting point and fails unless they leave every byte of screen RAM the same. A
+      setting changed in only one of the two files fails the test. That is on purpose: the
+      test is what keeps the two versions identical.</p>
+  </div>
+</section>
+
+<section id="asm">
+  <h2>Build the assembly</h2>
+  <p>With ACME, from the repository folder:</p>
+  <div class="code"><pre>acme -f cbm -o matrix_rain_8032_noclock_v8.prg matrix_rain_8032_noclock_v8.asm
+acme -f cbm -o matrix_rain_4032.prg matrix_rain_4032.asm</pre></div>
+  <p><code class="nw">-f cbm</code> puts the load address, <code class="nw">$0401</code>, in the first two bytes
+    of the file. A PET program file needs it, and <code class="nw">LOAD</code> uses it to place the
+    program.</p>
+  <p>Or with C64Ass, told to read ACME's syntax (<code class="nw">-A ACME</code>) and write a PET
+    program file (<code class="nw">-F CBM</code>):</p>
+  <div class="code"><pre>C64Ass -A ACME -F CBM -O matrix_rain_8032_noclock_v8.prg matrix_rain_8032_noclock_v8.asm
+C64Ass -A ACME -F CBM -O matrix_rain_4032.prg matrix_rain_4032.asm</pre></div>
+  <p>C64Ass prints one warning, <code>W1004_UNUSED_CONSTANT - Unused constant SCREEN_LO</code>.
+    It's harmless: the constant records where the screen starts, and no instruction uses
+    it.</p>
+  <p class="muted">A quick way to check your tools before you change anything: with the
+    settings as they are, both commands write files identical, byte for byte, to the
+    committed ones.</p>
+  <p>The first line of the program is a line of BASIC, <code class="nw">10 SYS 1040</code>, so
+    <code class="nw">RUN</code> starts the machine code.</p>
+</section>
+
+<section id="c">
+  <h2>Build the C version</h2>
+  <div class="code"><pre>.\build.ps1</pre></div>
+  <div class="code"><div class="label">Output</div><pre>Built matrix_rain_8032_c.prg (1,449 bytes)</pre></div>
+  <p><code class="nw">.\build.ps1 -Run</code> builds it and opens it in VICE on a PET 8032.</p>
+  <p>By hand, the same build is:</p>
+  <div class="code"><pre>cl65 -t pet -Oi -Cl -o matrix_rain_8032_c.prg matrix_rain_8032.c</pre></div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Option</th><th>What it does</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code class="nw">-t pet</code></td><td>Builds for the PET. cc65 adds the BASIC line that starts the program.</td></tr>
+        <tr><td><code class="nw">-Oi</code></td><td>Optimises, inlining more code. About 7% faster here than plain <code class="nw">-O</code>.</td></tr>
+        <tr><td><code class="nw">-Cl</code></td><td>Gives local variables fixed addresses instead of places on cc65's slow software stack. Safe because nothing in the program calls itself.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="check">
+  <h2>Check your change</h2>
+  <div class="code"><pre>.\build.ps1 -Test</pre></div>
+  <p>This takes a few seconds and needs no emulator. It builds the C version for cc65's
+    6502 simulator, runs it for 400 frames, and prints the screen as text:
+    <code class="nw">.</code> for an empty cell, <code class="nw">*</code> for a character, <code class="nw">#</code> for a
+    reverse-video one. Then it runs the committed 8032 <code class="nw">.prg</code> in the same
+    simulator and compares the two. It finishes like this:</p>
+  <div class="code"><div class="label">Output</div><pre>Screen RAM: all 2,048 bytes match the assembly's after 400 frames
+Frame cost: 31,372 cycles (1.88x the 16,667-cycle retrace budget, about 32 fps)
+Assembly:   18,453 cycles, so the C version takes 1.70x as long</pre></div>
+  <dl class="trouble">
+    <dt>Screen RAM</dt>
+    <dd>Both versions left the same bytes on screen, including the 48 bytes of screen
+      memory past the last visible row.</dd>
+    <dt>Frame cost</dt>
+    <dd>What one frame costs the C version, in 6502 cycles. At 1 MHz and 60 frames a
+      second a frame has 16,667 cycles, so the C version draws about 32 frames a
+      second.</dd>
+    <dt>Assembly</dt>
+    <dd>The same measurement for the assembly, timed on the same simulated clock.</dd>
+  </dl>
+  <div class="callout caution">
+    <p><span class="tag">Assemble first</span></p>
+    <p>The test reads the committed <code>matrix_rain_8032_noclock_v8.prg</code>, not the
+      <code class="nw">.asm</code>. After changing the assembly, rebuild the <code class="nw">.prg</code> before
+      running the test, or you'll be testing the old program.</p>
+  </div>
+  <p>To see which parts of the C version a frame's cycles go to, run
+    <code class="nw">.\tools\profile.ps1</code>.</p>
+  <p>The 4032 version has no automated test. Assemble it and watch it in VICE on a
+    PET 4032.</p>
+</section>
+
+<section id="code">
+  <h2>Changing the code itself</h2>
+  <p>Anything beyond the settings in the 8032 version also goes into both files, and
+    the random number calls must stay in the same order. Both versions draw every
+    random choice from one generator with the same starting seed. Each call moves the
+    generator on, so one extra or missing call changes every choice after it and the two
+    screens drift apart.</p>
+  <p>Moving code in the 8032 assembly also breaks the test's harness,
+    <code class="nw">tools\asm_harness.c</code>. The harness can't run the program's main loop,
+    because that waits for a screen refresh the simulator doesn't have. So it calls the
+    setup code at <code class="nw">$0415</code> and DRAW at <code class="nw">$0464</code> directly. It checks the
+    bytes at <code class="nw">$0410</code> and at the main loop, <code class="nw">$0457</code>, first. If
+    code before DRAW changes size, the test stops with:</p>
+  <div class="code"><div class="label">Output</div><pre>asm_harness: init and DRAW are not where this expects them.
+The .prg has changed; update the PET_ addresses to match.</pre></div>
+  <p>To find the new addresses, have the assembler write its labels to a file, with
+    <code class="nw">-l labels.txt</code> for ACME or <code class="nw">-L labels.txt</code> for C64Ass. In
+    C64Ass's file, the two you need look like this:</p>
+  <div class="code"><div class="label">labels.txt, from C64Ass</div><pre>MainLoop = $0457;
+DRAW = $0464;</pre></div>
+  <p>Put them into <code class="nw">PET_MAINLOOP</code> and <code class="nw">PET_DRAW</code> in the harness.
+    Update the <code class="nw">jsr DRAW</code> bytes in <code class="nw">mainloop_code</code> too, since they
+    hold DRAW's address.</p>
+</section>
+
+<section id="trouble">
+  <h2>If something goes wrong</h2>
+  <dl class="trouble">
+    <dt><code>cl65 not found at … Pass -Cc65 &lt;path to cc65&gt;.</code></dt>
+    <dd>cc65 isn't in the folder <code class="nw">build.ps1</code> expects. Pass
+      <code class="nw">-Cc65</code> with the folder that holds <code class="nw">bin\cl65.exe</code>.</dd>
+    <dt><code>xpet not found at … Pass -Vice &lt;path to VICE&gt;.</code></dt>
+    <dd>The same for VICE: pass <code class="nw">-Vice</code> with the folder that holds
+      <code class="nw">bin\xpet.exe</code>.</dd>
+    <dt><code>… cannot be loaded because running scripts is disabled on this system.</code></dt>
+    <dd>Windows is blocking PowerShell scripts. Allow your own scripts once with
+      <code>Set-ExecutionPolicy -Scope CurrentUser RemoteSigned</code>. If you downloaded
+      the repository as a zip, also run
+      <code>Get-ChildItem -Recurse *.ps1 | Unblock-File</code> in its folder.</dd>
+    <dt><code>Screen RAM differs from the assembly's in … bytes after 400 frames.</code></dt>
+    <dd>The two versions drew different screens. Check that the settings match in
+      both files and that you rebuilt the <code class="nw">.prg</code> after changing the
+      assembly. The message gives the first address that differs and both values.</dd>
+    <dt><code>asm_harness: init and DRAW are not where this expects them.</code></dt>
+    <dd>Code in the assembly moved. See <a href="#code">Changing the code itself</a>.</dd>
+    <dt>The screen clears and nothing falls</dt>
+    <dd>A setting is out of range. See <a href="#settings">Values that stall it</a>.</dd>
+  </dl>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>The <code class="nw">build.ps1</code> and C64Ass commands above were run on Windows 11 on
+      18 September 2026, with cc65 2.19 and C64 Studio 8.3, and the output shown is from
+      those runs. With the settings unchanged, every rebuilt <code class="nw">.prg</code> matched the
+      committed one byte for byte. The ACME commands weren't run, because ACME isn't
+      installed on that machine; C64Ass assembled the same sources in ACME's syntax.</p>
+    <p><a href="running-in-vice.html">Matrix Rain in VICE</a> ·
+      <a href="building-for-the-coco.html">Building for the CoCo</a> ·
+      <a href="../README.md">Back to the README</a></p>
+  </div>
+</footer>
+
+</body>
+</html>

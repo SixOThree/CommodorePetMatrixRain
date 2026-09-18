@@ -64,6 +64,7 @@
   .wrap { max-width: 1100px; margin: 0 auto; padding-inline: 16px; }
   code, kbd, pre { font-family: ui-monospace, "Cascadia Mono", Consolas, "SF Mono", Menlo, monospace; }
   code { font-size: 0.9em; background: var(--code); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; overflow-wrap: anywhere; }
+  code.nw { white-space: nowrap; }
   a { color: var(--accent); text-underline-offset: 2px; }
   a:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
   h1, h2, h3 { text-wrap: balance; line-height: 1.2; }
@@ -73,6 +74,10 @@
   .masthead .eyebrow { margin: 0 0 6px; font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.85; }
   .masthead h1 { margin: 0; font-size: clamp(1.9rem, 1.3rem + 2.2vw, 2.8rem); font-weight: 760; letter-spacing: -0.015em; }
   .masthead .lede { margin: 10px 0 0; max-width: 62ch; font-size: 1.07rem; opacity: 0.95; }
+  .masthead code {
+    color: inherit; background: color-mix(in srgb, var(--accent-ink) 14%, transparent);
+    border-color: color-mix(in srgb, var(--accent-ink) 30%, transparent);
+  }
   .facts { display: flex; flex-wrap: wrap; gap: 10px 32px; margin: 22px 0 0; padding: 0; }
   .facts div { display: grid; gap: 1px; }
   .facts dt { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.8; }
@@ -83,7 +88,7 @@
     position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
     background: var(--surface); border-bottom: 1px solid var(--line);
   }
-  .toc ol { display: flex; gap: 4px 18px; margin: 0; padding: 10px 0; list-style: none; overflow-x: auto; white-space: nowrap; font-size: 14px; }
+  .toc ol { display: flex; gap: 4px 18px; margin: 0; padding: 10px 0; list-style: none; overflow-x: auto; white-space: nowrap; font-size: 14px; scrollbar-width: thin; }
   .toc a { color: var(--muted); text-decoration: none; }
   .toc a:hover { color: var(--accent); text-decoration: underline; }
 
@@ -132,6 +137,9 @@
 
   .code { overflow-x: auto; margin: 10px 0; background: var(--code); border: 1px solid var(--line); border-radius: 8px; }
   .code pre { margin: 0; padding: 12px 14px; font-size: 13.5px; line-height: 1.55; }
+  .code .label { padding: 8px 14px 0; font-size: 12px; font-weight: 650; color: var(--muted); }
+  .code .label + pre { padding-top: 6px; }
+  td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
 
   .shots { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); margin: 16px 0 0; }
   figure { margin: 0; }
@@ -141,6 +149,8 @@
   /* Callouts */
   .callout { margin: 14px 0; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); }
   .callout.caution { background: var(--note-soft); border-color: var(--note-line); }
+  .callout.key { background: var(--accent-soft); }
+  .callout.key .tag { background: var(--accent); color: var(--accent-ink); }
   .callout p { margin: 4px 0; }
   .tag {
     display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
@@ -207,22 +217,22 @@
         <tr><th>ROM file</th><th>Size</th><th>Needed for</th></tr>
       </thead>
       <tbody>
-        <tr><td><code>bas13.rom</code> and <code>extbas11.rom</code></td><td>8 KB each</td><td>The CoCo 1/2 version</td></tr>
-        <tr><td><code>coco3.rom</code></td><td>32 KB</td><td>The CoCo 3 versions</td></tr>
-        <tr><td><code>disk11.rom</code></td><td>8 KB</td><td>Only for loading from the disk image</td></tr>
+        <tr><td><code class="nw">bas13.rom</code> and <code class="nw">extbas11.rom</code></td><td>8 KB each</td><td>The CoCo 1/2 version</td></tr>
+        <tr><td><code class="nw">coco3.rom</code></td><td>32 KB</td><td>The CoCo 3 versions</td></tr>
+        <tr><td><code class="nw">disk11.rom</code></td><td>8 KB</td><td>Only for loading from the disk image</td></tr>
       </tbody>
     </table>
   </div>
-  <p>Put the ROM files in <code>%LOCALAPPDATA%\XRoar\roms</code>. Type
-    <code>%LOCALAPPDATA%</code> into File Explorer's address bar to get there, then
-    create the <code>XRoar</code> folder, and <code>roms</code> inside it. XRoar also
-    finds ROMs placed in the same folder as <code>xroar.exe</code>.</p>
+  <p>Put the ROM files in <code class="nw">%LOCALAPPDATA%\XRoar\roms</code>. Type
+    <code class="nw">%LOCALAPPDATA%</code> into File Explorer's address bar to get there, then
+    create the <code class="nw">XRoar</code> folder, and <code class="nw">roms</code> inside it. XRoar also
+    finds ROMs placed in the same folder as <code class="nw">xroar.exe</code>.</p>
 </section>
 
 <section id="files">
   <h2>Which file</h2>
-  <p>Each version comes three ways: a <code>.bin</code> program file, the simplest to
-    run; a <code>.cas</code> cassette tape image; and a <code>.dsk</code> disk image.</p>
+  <p>Each version comes three ways: a <code class="nw">.bin</code> program file, the simplest to
+    run; a <code class="nw">.cas</code> cassette tape image; and a <code class="nw">.dsk</code> disk image.</p>
   <div class="table-wrap">
     <table>
       <thead>
@@ -230,19 +240,19 @@
       </thead>
       <tbody>
         <tr>
-          <td><code>matrix_rain_coco.bin</code><br><code>matrix_rain_coco.cas</code><br><code>matrix_rain_coco.dsk</code> (as <code>MATRIX</code>)</td>
+          <td><code class="nw">matrix_rain_coco.bin</code><br><code class="nw">matrix_rain_coco.cas</code><br><code class="nw">matrix_rain_coco.dsk</code> (as <code class="nw">MATRIX</code>)</td>
           <td>Tandy CoCo 2B (NTSC,T1)</td>
           <td>Any</td>
           <td>CoCo 1/2: 32×16, green letters and flickering graphics blocks.</td>
         </tr>
         <tr>
-          <td><code>matrix_rain_coco3.bin</code><br><code>matrix_rain_coco3.cas</code><br><code>matrix_rain_coco3.dsk</code> (as <code>MATRIX3</code>)</td>
+          <td><code class="nw">matrix_rain_coco3.bin</code><br><code class="nw">matrix_rain_coco3.cas</code><br><code class="nw">matrix_rain_coco3.dsk</code> (as <code class="nw">MATRIX3</code>)</td>
           <td>Tandy CoCo 3</td>
           <td>RGB</td>
           <td>CoCo 3 for an RGB monitor: 80×24, trails fading from white to dark green.</td>
         </tr>
         <tr>
-          <td><code>matrix_rain_coco3_cmp.bin</code><br><code>matrix_rain_coco3_cmp.cas</code><br><code>matrix_rain_coco3.dsk</code> (as <code>MATRIX3C</code>)</td>
+          <td><code class="nw">matrix_rain_coco3_cmp.bin</code><br><code class="nw">matrix_rain_coco3_cmp.cas</code><br><code class="nw">matrix_rain_coco3.dsk</code> (as <code class="nw">MATRIX3C</code>)</td>
           <td>Tandy CoCo 3</td>
           <td>Composite (blue-red)</td>
           <td>CoCo 3 for a TV: 40×24, the same fade.</td>
@@ -250,16 +260,16 @@
       </tbody>
     </table>
   </div>
-  <p class="muted">Both CoCo 3 versions share one disk image, <code>matrix_rain_coco3.dsk</code>.</p>
+  <p class="muted">Both CoCo 3 versions share one disk image, <code class="nw">matrix_rain_coco3.dsk</code>.</p>
 </section>
 
 <section id="menus">
   <h2>Run it from the menus</h2>
-  <p>This works for the <code>.bin</code> and <code>.cas</code> files. For the disk
+  <p>This works for the <code class="nw">.bin</code> and <code class="nw">.cas</code> files. For the disk
     image, see <a href="#disk">From a disk image</a>.</p>
   <ol class="steps">
     <li>
-      <p>Start <code>xroar.exe</code>. It starts whichever machine it's set to by
+      <p>Start <code class="nw">xroar.exe</code>. It starts whichever machine it's set to by
         default, which may be a Dragon, the CoCo's close cousin. The next step picks the
         CoCo.</p>
     </li>
@@ -277,8 +287,8 @@
     <li>
       <p>Open <span class="menu">File</span><span class="sep">›</span><span class="menu">Run…</span>
         (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd>) and choose the file. XRoar loads it
-        and starts it. A <code>.bin</code> starts at once. A <code>.cas</code> takes a few
-        seconds: XRoar types <code>CLOADM</code> and plays the tape.</p>
+        and starts it. A <code class="nw">.bin</code> starts at once. A <code class="nw">.cas</code> takes a few
+        seconds: XRoar types <code class="nw">CLOADM</code> and plays the tape.</p>
     </li>
   </ol>
 
@@ -304,12 +314,12 @@
   <div class="callout caution">
     <p><span class="tag">Not yet tried in XRoar</span></p>
     <p>The disk images are built and their contents checked byte by byte, but they
-      haven't been loaded in XRoar yet, because that needs <code>disk11.rom</code>. The
+      haven't been loaded in XRoar yet, because that needs <code class="nw">disk11.rom</code>. The
       steps below follow XRoar's manual.</p>
   </div>
   <ol class="steps">
     <li>
-      <p>Make sure <code>disk11.rom</code> is with your other ROMs. XRoar then adds a
+      <p>Make sure <code class="nw">disk11.rom</code> is with your other ROMs. XRoar then adds a
         disk drive controller to the CoCo by itself.</p>
     </li>
     <li>
@@ -318,7 +328,7 @@
     </li>
     <li>
       <p>Open <span class="menu">File</span><span class="sep">›</span><span class="menu">Run…</span>
-        and choose the <code>.dsk</code>. XRoar inserts the disk and types <code>DOS</code>.
+        and choose the <code class="nw">.dsk</code>. XRoar inserts the disk and types <code class="nw">DOS</code>.
         The screen clears and nothing else happens. That's expected: the disk has no
         start-up program.</p>
     </li>
@@ -334,12 +344,12 @@ LOADM"MATRIX3C":EXEC    CoCo 3, composite, from matrix_rain_coco3.dsk</pre></div
 <section id="command">
   <h2>Run it from a command line</h2>
   <p>One line picks the machine and TV input, loads the program and runs it. From the
-    folder holding the files, with <code>xroar.exe</code> on your path, or with its full
+    folder holding the files, with <code class="nw">xroar.exe</code> on your path, or with its full
     path typed in:</p>
   <div class="code"><pre>xroar -machine coco2bus -run matrix_rain_coco.bin
 xroar -machine coco3 -tv-input rgb -run matrix_rain_coco3.bin
 xroar -machine coco3 -tv-input cmp-br -run matrix_rain_coco3_cmp.bin</pre></div>
-  <p>Swap <code>.bin</code> for <code>.cas</code> to load the same program from its tape
+  <p>Swap <code class="nw">.bin</code> for <code class="nw">.cas</code> to load the same program from its tape
     image instead.</p>
 </section>
 
@@ -353,7 +363,7 @@ xroar -machine coco3 -tv-input cmp-br -run matrix_rain_coco3_cmp.bin</pre></div>
 <section id="trouble">
   <h2>If it doesn't work</h2>
   <dl class="trouble">
-    <dt>A checkerboard of orange and inverse <code>@</code> signs instead of the BASIC
+    <dt>A checkerboard of orange and inverse <code class="nw">@</code> signs instead of the BASIC
       copyright message (on a CoCo 3, some other pattern)</dt>
     <dd>XRoar can't find the BASIC ROMs. Check the file names and the folder under
       <a href="#need">What you need</a>.</dd>
@@ -361,7 +371,7 @@ xroar -machine coco3 -tv-input cmp-br -run matrix_rain_coco3_cmp.bin</pre></div>
     <dd>The TV input is set to one of the Composite options. Set
       <span class="menu">View</span><span class="sep">›</span><span class="menu">TV input</span><span class="sep">›</span><span class="menu">RGB</span>.
       On a composite signal, 80 columns is more detail than the colour can carry;
-      use the 40-column <code>matrix_rain_coco3_cmp</code> files for that.</dd>
+      use the 40-column <code class="nw">matrix_rain_coco3_cmp</code> files for that.</dd>
     <dt>A CoCo 3 file doesn't run</dt>
     <dd>The CoCo 3 files only run on the Tandy CoCo 3 machine. Check
       <span class="menu">Hardware</span><span class="sep">›</span><span class="menu">Machine</span>.</dd>
@@ -373,10 +383,11 @@ xroar -machine coco3 -tv-input cmp-br -run matrix_rain_coco3_cmp.bin</pre></div>
 <footer>
   <div class="wrap">
     <p>The command lines above were run exactly as shown in XRoar 1.9 on Windows 11 on
-      18 September 2026, with <code>.bin</code> and <code>.cas</code> files and XRoar's
+      18 September 2026, with <code class="nw">.bin</code> and <code class="nw">.cas</code> files and XRoar's
       default memory size; the screenshots come from those runs. The menu names come
       from XRoar 1.9's manual. Loading from a disk image hasn't been tried yet.</p>
-    <p><a href="../README.md">Back to the README</a></p>
+    <p><a href="building-for-the-coco.html">Building for the CoCo</a> ·
+      <a href="../README.md">Back to the README</a></p>
   </div>
 </footer>
 

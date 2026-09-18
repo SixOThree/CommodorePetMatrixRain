@@ -11,6 +11,22 @@ This 6502 assembly program recreates the iconic "digital rain" effect from The M
 - Reverse video highlighting on lead characters
 - Smooth animation synced to vertical retrace
 
+## Guides
+
+Step-by-step guides for running the rain in an emulator, with screenshots of
+what you should see:
+
+- [Running in VICE](docs/running-in-vice.html): the PET versions, on a PET 8032 or 4032.
+- [Running in XRoar](docs/running-in-xroar.html): the Color Computer 1/2 and 3 versions, including the ROMs XRoar needs.
+
+And for changing it, building every output file, and running the tests:
+
+- [Building for the PET](docs/building-for-the-pet.html): the 6502 assembly and C versions, with ACME or C64 Studio and cc65.
+- [Building for the CoCo](docs/building-for-the-coco.html): the Color Computer versions, their tape and disk images, and the XRoar tests.
+
+They're HTML pages. GitHub shows their source, so open them in a browser
+from a clone or a download of the repository.
+
 ## Development
 
 This project was developed using [C64 Studio](https://github.com/GeorgRottensteiner/C64Studio), an IDE for 6502 assembly targeting Commodore 8-bit computers.
@@ -147,16 +163,7 @@ RUN
 ```
 
 The program includes a BASIC stub that automatically starts the machine code.
-
-### Emulator guides
-
-Step-by-step guides, with screenshots of what you should see:
-
-- [Running in VICE](docs/running-in-vice.html): the PET versions, on a PET 8032 or 4032.
-- [Running in XRoar](docs/running-in-xroar.html): the Color Computer 1/2 and 3 versions, including the ROMs XRoar needs.
-
-They're HTML pages. GitHub shows their source, so open them in a browser
-from a clone or a download of the repository.
+To run it in VICE, follow [Running in VICE](docs/running-in-vice.html).
 
 ## Configuration
 
