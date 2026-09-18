@@ -1,0 +1,618 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Building for the CoCo</title>
+<style>
+  :root {
+    --ground: #f3f6f1;
+    --surface: #ffffff;
+    --ink: #17201a;
+    --muted: #55625a;
+    --line: #d3dcd2;
+    --accent: #1b6b36;
+    --accent-ink: #f3faf4;
+    --accent-soft: #e0eee3;
+    --code: #ecf1ea;
+    --note: #7d5200;
+    --note-soft: #fbf1dc;
+    --note-line: #ecd6a8;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0d1210;
+      --surface: #141b17;
+      --ink: #dce6de;
+      --muted: #93a297;
+      --line: #27332b;
+      --accent: #5ccf7f;
+      --accent-ink: #0a130d;
+      --accent-soft: #19301f;
+      --code: #101814;
+      --note: #e5b25a;
+      --note-soft: #2a2213;
+      --note-line: #4a3a1c;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0d1210;
+    --surface: #141b17;
+    --ink: #dce6de;
+    --muted: #93a297;
+    --line: #27332b;
+    --accent: #5ccf7f;
+    --accent-ink: #0a130d;
+    --accent-soft: #19301f;
+    --code: #101814;
+    --note: #e5b25a;
+    --note-soft: #2a2213;
+    --note-line: #4a3a1c;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-padding-top: 4.5rem; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font: 15px/1.6 system-ui, "Segoe UI", -apple-system, "Helvetica Neue", Arial, sans-serif;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; padding-inline: 16px; }
+  code, kbd, pre { font-family: ui-monospace, "Cascadia Mono", Consolas, "SF Mono", Menlo, monospace; }
+  code { font-size: 0.9em; background: var(--code); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; overflow-wrap: anywhere; }
+  code.nw { white-space: nowrap; }
+  a { color: var(--accent); text-underline-offset: 2px; }
+  a:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+  h1, h2, h3 { text-wrap: balance; line-height: 1.2; }
+
+  /* Masthead */
+  .masthead { background: var(--accent); color: var(--accent-ink); padding-block: 36px 30px; }
+  .masthead .eyebrow { margin: 0 0 6px; font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.85; }
+  .masthead h1 { margin: 0; font-size: clamp(1.9rem, 1.3rem + 2.2vw, 2.8rem); font-weight: 760; letter-spacing: -0.015em; }
+  .masthead .lede { margin: 10px 0 0; max-width: 62ch; font-size: 1.07rem; opacity: 0.95; }
+  .masthead code {
+    color: inherit; background: color-mix(in srgb, var(--accent-ink) 14%, transparent);
+    border-color: color-mix(in srgb, var(--accent-ink) 30%, transparent);
+  }
+  .facts { display: flex; flex-wrap: wrap; gap: 10px 32px; margin: 22px 0 0; padding: 0; }
+  .facts div { display: grid; gap: 1px; }
+  .facts dt { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.8; }
+  .facts dd { margin: 0; font-weight: 600; }
+
+  /* Sticky table of contents */
+  .toc {
+    position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+    background: var(--surface); border-bottom: 1px solid var(--line);
+  }
+  .toc ol { display: flex; gap: 4px 18px; margin: 0; padding: 10px 0; list-style: none; overflow-x: auto; white-space: nowrap; font-size: 14px; scrollbar-width: thin; }
+  .toc a { color: var(--muted); text-decoration: none; }
+  .toc a:hover { color: var(--accent); text-decoration: underline; }
+
+  main { padding-block: 8px 48px; }
+  section { padding-top: 26px; }
+  h2 { margin: 0 0 10px; font-size: 1.45rem; font-weight: 720; }
+  h3 { margin: 22px 0 8px; font-size: 1.08rem; font-weight: 680; }
+  p, li { max-width: 72ch; }
+  .muted { color: var(--muted); }
+
+  /* Menu paths and keys */
+  .menu {
+    display: inline-block; white-space: nowrap; font-weight: 600; font-size: 0.93em;
+    background: var(--accent-soft); border: 1px solid var(--line); border-radius: 5px; padding: 0 7px;
+  }
+  .sep { color: var(--muted); padding-inline: 3px; }
+  kbd {
+    font-size: 0.85em; background: var(--surface); border: 1px solid var(--line); border-bottom-width: 2px;
+    border-radius: 4px; padding: 0 5px; white-space: nowrap;
+  }
+
+  /* Numbered steps: a real sequence */
+  ol.steps { list-style: none; counter-reset: step; margin: 14px 0 0; padding: 0; display: grid; gap: 14px; }
+  ol.steps > li {
+    counter-increment: step; position: relative; max-width: none; min-width: 0;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+    padding: 14px 16px 14px 58px;
+  }
+  ol.steps > li::before {
+    content: counter(step); position: absolute; left: 14px; top: 13px;
+    width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
+    background: var(--accent); color: var(--accent-ink); font-weight: 700; font-size: 14px;
+  }
+  ol.steps > li > :first-child { margin-top: 3px; }
+  ol.steps > li > :last-child { margin-bottom: 0; }
+  ol.steps p { margin: 6px 0; }
+
+  /* Tables, code and screenshots each scroll in their own box */
+  .table-wrap { overflow-x: auto; margin: 12px 0; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; vertical-align: top; padding: 10px 12px; }
+  th { font-size: 11.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 650; border-bottom: 1px solid var(--line); }
+  td { border-top: 1px solid var(--line); }
+  tr:first-child td { border-top: 0; }
+  td code { white-space: nowrap; }
+
+  .code { overflow-x: auto; margin: 10px 0; background: var(--code); border: 1px solid var(--line); border-radius: 8px; }
+  .code pre { margin: 0; padding: 12px 14px; font-size: 13.5px; line-height: 1.55; }
+  .code .label { padding: 8px 14px 0; font-size: 12px; font-weight: 650; color: var(--muted); }
+  .code .label + pre { padding-top: 6px; }
+  td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  .shots { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); margin: 16px 0 0; }
+  figure { margin: 0; }
+  figure img { display: block; max-width: 100%; height: auto; border: 1px solid var(--line); border-radius: 8px; background: #000; }
+  figcaption { margin-top: 6px; font-size: 13.5px; color: var(--muted); }
+
+  /* Callouts */
+  .callout { margin: 14px 0; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); }
+  .callout.caution { background: var(--note-soft); border-color: var(--note-line); }
+  .callout.key { background: var(--accent-soft); }
+  .callout.key .tag { background: var(--accent); color: var(--accent-ink); }
+  .callout p { margin: 4px 0; }
+  .tag {
+    display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+    border-radius: 999px; padding: 1px 9px; background: var(--note); color: var(--surface);
+  }
+
+  dl.trouble { margin: 10px 0 0; display: grid; gap: 12px; }
+  dl.trouble dt { font-weight: 650; }
+  dl.trouble dd { margin: 2px 0 0; max-width: 72ch; }
+
+  footer { border-top: 1px solid var(--line); padding-block: 18px 32px; font-size: 13.5px; color: var(--muted); }
+
+  @media (max-width: 560px) {
+    ol.steps > li { padding: 12px 12px 12px 50px; }
+    ol.steps > li::before { left: 11px; width: 28px; height: 28px; }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    html { scroll-behavior: smooth; }
+  }
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="wrap">
+    <p class="eyebrow">Commodore PET Matrix Rain</p>
+    <h1>Building for the CoCo</h1>
+    <p class="lede">How to change the TRS-80 Color Computer versions of the rain, rebuild
+      the programs with their tape and disk images, and run the tests that check them in
+      XRoar.</p>
+    <dl class="facts">
+      <div><dt>Assembler</dt><dd>LWTOOLS 4.25</dd></div>
+      <div><dt>Tests</dt><dd>XRoar 1.9 and cc65 2.19</dd></div>
+      <div><dt>Checked</dt><dd>18 September 2026, Windows 11</dd></div>
+    </dl>
+  </div>
+</header>
+
+<nav class="toc" aria-label="Contents">
+  <div class="wrap">
+    <ol>
+      <li><a href="#short">Short version</a></li>
+      <li><a href="#files">Files</a></li>
+      <li><a href="#tools">Tools</a></li>
+      <li><a href="#settings">Settings</a></li>
+      <li><a href="#build">Build</a></li>
+      <li><a href="#check">Checking</a></li>
+      <li><a href="#code">Changing the code</a></li>
+      <li><a href="#trouble">Troubleshooting</a></li>
+    </ol>
+  </div>
+</nav>
+
+<main class="wrap">
+
+<section id="short">
+  <h2>The short version</h2>
+  <p>Run these from the repository folder, in PowerShell 7. The CoCo 1/2 version uses
+    <code class="nw">build-coco.ps1</code>; the CoCo 3 version uses <code class="nw">build-coco3.ps1</code> the
+    same way.</p>
+  <ol class="steps">
+    <li>
+      <p>Change a setting in <code class="nw">matrix_rain_coco.asm</code>, and the same setting in
+        <code class="nw">matrix_rain_coco.c</code>. See <a href="#settings">Change the settings</a>.</p>
+    </li>
+    <li>
+      <p>Build everything and test it:</p>
+      <div class="code"><pre>.\build-coco.ps1 -Test</pre></div>
+    </li>
+    <li>
+      <p>Watch it run:</p>
+      <div class="code"><pre>.\build-coco.ps1 -Run</pre></div>
+    </li>
+    <li>
+      <p>Commit the sources with the rebuilt <code class="nw">.bin</code>, <code class="nw">.cas</code> and
+        <code class="nw">.dsk</code> files.</p>
+    </li>
+  </ol>
+</section>
+
+<section id="files">
+  <h2>The files</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Source</th><th>Built by</th><th>Writes</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code class="nw">matrix_rain_coco.asm</code><br>CoCo 1/2</td>
+          <td><code class="nw">build-coco.ps1</code></td>
+          <td><code class="nw">matrix_rain_coco.bin</code>, the program<br>
+            <code class="nw">matrix_rain_coco.cas</code>, a tape holding it as <code class="nw">MATRIX</code><br>
+            <code class="nw">matrix_rain_coco.dsk</code>, a disk holding it as <code class="nw">MATRIX.BIN</code></td>
+        </tr>
+        <tr>
+          <td><code class="nw">matrix_rain_coco3.asm</code><br>CoCo 3</td>
+          <td><code class="nw">build-coco3.ps1</code></td>
+          <td><code class="nw">matrix_rain_coco3.bin</code> and <code class="nw">.cas</code>: 80 columns, for an
+            RGB monitor, <code class="nw">MATRIX3</code> on tape<br>
+            <code class="nw">matrix_rain_coco3_cmp.bin</code> and <code class="nw">_cmp.cas</code>: 40 columns, for
+            a TV, <code class="nw">MATRIX3C</code> on tape<br>
+            <code class="nw">matrix_rain_coco3.dsk</code>, a disk holding both</td>
+        </tr>
+        <tr>
+          <td><code class="nw">matrix_rain_coco.c</code><br><code class="nw">matrix_rain_coco3.c</code></td>
+          <td>the tests</td>
+          <td>Nothing you run. See below.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p>Each CoCo program has a <strong>reference model</strong>: a C copy of it, in the
+    matching <code class="nw">.c</code> file, that runs in cc65's 6502 simulator instead of on a
+    CoCo. The test runs the program and its reference model for 400 frames each and
+    requires them to leave the same screen. The C copies descend from the PET's C
+    version, which was itself checked byte for byte against the PET assembly, so this
+    keeps every version drawing the same rain.</p>
+  <p>The three kinds of output:</p>
+  <dl class="trouble">
+    <dt><code class="nw">.bin</code></dt>
+    <dd>Disk BASIC's machine-code file: the program's bytes, where they load, and where
+      to start. XRoar runs one directly.</dd>
+    <dt><code class="nw">.cas</code></dt>
+    <dd>A cassette recording, as data. <code class="nw">CLOADM</code> reads it.</dd>
+    <dt><code class="nw">.dsk</code></dt>
+    <dd>A 35-track Disk BASIC floppy image. <code class="nw">LOADM</code> reads it.</dd>
+  </dl>
+  <p>LWTOOLS writes only the <code class="nw">.bin</code>. <code class="nw">tools\coco_images.ps1</code> writes
+    the tape and disk images from it, and <code class="nw">tools\xroar.ps1</code> runs XRoar with no
+    window for the tests. <code class="nw">tools\test_coco_tools.ps1</code> tests those two, using
+    the small program in <code class="nw">tools\fixtures\fill.asm</code>.</p>
+</section>
+
+<section id="tools">
+  <h2>Tools</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Tool</th><th>Needed for</th><th>Where to get it</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>LWTOOLS 4.25</td>
+          <td>Building. Only <code class="nw">lwasm.exe</code> is used.</td>
+          <td><a href="http://www.lwtools.ca/">lwtools.ca</a>, as source code. See
+            <a href="#lwtools">Building LWTOOLS on Windows</a>.</td>
+        </tr>
+        <tr>
+          <td>XRoar 1.9 and the CoCo ROMs</td>
+          <td><code class="nw">-Run</code> and <code class="nw">-Test</code></td>
+          <td>See <a href="running-in-xroar.html">Matrix Rain in XRoar</a>.</td>
+        </tr>
+        <tr>
+          <td>cc65</td>
+          <td><code class="nw">-Test</code> only: it compiles the reference models</td>
+          <td><a href="https://cc65.github.io/">cc65.github.io</a>. Download the Windows
+            snapshot and unzip it anywhere.</td>
+        </tr>
+        <tr>
+          <td>PowerShell 7</td>
+          <td>The build scripts</td>
+          <td><code>winget install Microsoft.PowerShell</code>, then run
+            <code class="nw">pwsh</code>.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p>The scripts look for each tool where it is on the machine they were written on. If
+    yours are elsewhere, say where. Both scripts take the same options:</p>
+  <div class="code"><pre>.\build-coco.ps1 -Test -Lwtools D:\lwtools\bin -XRoar D:\XRoar\xroar.exe -Cc65 D:\cc65 -Roms D:\XRoar\roms</pre></div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Option</th><th>Default</th><th>What to give it</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code class="nw">-Lwtools</code></td><td><code>C:\Development\_VintageDevelopment\lwtools\bin</code></td><td>The folder that holds <code class="nw">lwasm.exe</code>.</td></tr>
+        <tr><td><code class="nw">-XRoar</code></td><td><code>C:\Program Files\6809.org.uk\XRoar 1.9\xroar.exe</code></td><td>The path to <code class="nw">xroar.exe</code> itself.</td></tr>
+        <tr><td><code class="nw">-Cc65</code></td><td><code>C:\Development\_VintageDevelopment\cc65_snapshot</code></td><td>The folder that holds <code class="nw">bin\cl65.exe</code>.</td></tr>
+        <tr><td><code class="nw">-Roms</code></td><td><code>%USERPROFILE%\Documents\XRoar\ROMS</code></td><td>Your ROM folder. The scripts only look here for <code class="nw">disk11.rom</code>, to decide whether to test the disk image; XRoar finds its ROMs by itself.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 id="lwtools">Building LWTOOLS on Windows</h3>
+  <p>LWTOOLS comes as source code, with a Visual Studio solution in its <code class="nw">win</code>
+    folder. You need Visual Studio with its C++ desktop tools.</p>
+  <ol class="steps">
+    <li>
+      <p>Download the LWTOOLS 4.25 source from <a href="http://www.lwtools.ca/">lwtools.ca</a>
+        and unpack it. Windows' own <code class="nw">tar</code> can unpack a <code class="nw">.tar.gz</code>:
+        <code class="nw">tar -xzf lwtools-4.25.tar.gz</code>.</p>
+    </li>
+    <li>
+      <p>Build the release version, 32-bit, from a Developer PowerShell for Visual
+        Studio, which has <code class="nw">msbuild</code> on its path:</p>
+      <div class="code"><pre>msbuild lwtools-4.25\win\lwtools.sln /p:Configuration=Release /p:Platform=Win32</pre></div>
+      <p>If it says the project's platform toolset isn't installed, add yours:
+        <code class="nw">/p:PlatformToolset=v145</code> for Visual Studio 2026, <code class="nw">v143</code>
+        for 2022.</p>
+    </li>
+    <li>
+      <p>Copy <code>lwtools-4.25\win\lwasm\Release\lwasm.exe</code> into a folder of your
+        choice, and give that folder to the scripts as <code class="nw">-Lwtools</code>.</p>
+    </li>
+  </ol>
+  <p class="muted">One part fails: <code class="nw">lwlink</code>, the linker, stops on an unresolved
+    <code class="nw">strcasecmp</code>. This project doesn't use it. To build it anyway, run
+    <code>$env:CL = '/Dstrcasecmp=_stricmp'</code> before <code class="nw">msbuild</code>.</p>
+</section>
+
+<section id="settings">
+  <h2>Change the settings</h2>
+  <p>The settings sit in a <code class="nw">Configuration</code> block near the top of each
+    <code class="nw">.asm</code> file, as <code class="nw">equ</code> lines, and as <code class="nw">#define</code> lines
+    near the top of its <code class="nw">.c</code> file.</p>
+  <p>The CoCo 3 files have two blocks. The one under <code class="nw">IFDEF COMPOSITE</code>
+    (<code class="nw">#ifdef COMPOSITE</code> in the C) is the 40-column build for a TV; the one
+    under <code class="nw">ELSE</code> is the 80-column build for an RGB monitor.</p>
+  <div class="code"><div class="label">matrix_rain_coco.asm</div><pre>GLITCH   equ  64           ; trail glitch frequency (0=off, 255=constant)
+TRAILMIN equ  6              ; minimum trail length (rows)
+TRAILMAX equ  14             ; maximum trail length (rows)
+REVERSE  equ  64             ; highlight chance (0=never, 255=always)
+NEWCHAR  equ  51             ; new char chance (lower=more flicker)
+NUMDRIPS equ  28             ; active drops (max 32)
+SPDSTART equ  9              ; initial speed range (0 to N-1, lower=faster)
+SPDRESET equ  5              ; reset speed range (0 to N-1, lower=faster)
+GRAPHIC  equ  16             ; graphics block chance (0=never, 255=always)
+BLOCKGLITCH equ 128          ; chance a green block changes each time the
+                             ; sweep visits it, every 4 frames (0=never,
+                             ; 255=always)</pre></div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Setting</th><th>CoCo 1/2</th><th>CoCo 3 RGB</th><th>CoCo 3 TV</th><th>What it controls</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code class="nw">GLITCH</code></td><td class="num">64</td><td class="num">64</td><td class="num">64</td><td>How often a drop swaps a character in its trail for a new one: the chance out of 256, each frame. 0 turns it off.</td></tr>
+        <tr><td><code class="nw">TRAILMIN</code></td><td class="num">6</td><td class="num">10</td><td class="num">14</td><td>The shortest trail, in rows. Each drop picks a length when it starts. At least 5 on the CoCo 3, which needs the rows for its fade.</td></tr>
+        <tr><td><code class="nw">TRAILMAX</code></td><td class="num">14</td><td class="num">23</td><td class="num">23</td><td>The longest trail, in rows.</td></tr>
+        <tr><td><code class="nw">REVERSE</code></td><td class="num">64</td><td class="num">64</td><td class="num">64</td><td>The chance out of 256 that a new head is highlighted: a dark letter on bright green.</td></tr>
+        <tr><td><code class="nw">NEWCHAR</code></td><td class="num">51</td><td class="num">51</td><td class="num">51</td><td>The chance out of 256 that a head changes to a new character on a given frame. Higher flickers more. (The comment in the source says lower; the code does the opposite.)</td></tr>
+        <tr><td><code class="nw">NUMDRIPS</code></td><td class="num">28</td><td class="num">65</td><td class="num">40</td><td>How many drops fall at once. At most 32 on the CoCo 1/2, and at most the number of columns on the CoCo 3.</td></tr>
+        <tr><td><code class="nw">SPDSTART</code></td><td class="num">9</td><td class="num">9</td><td class="num">15</td><td>Each drop's first speed is picked from 0 up to one less than this, at most 32. A speed is the number of frames a drop waits between moves, so lower is faster.</td></tr>
+        <tr><td><code class="nw">SPDRESET</code></td><td class="num">5</td><td class="num">5</td><td class="num">8</td><td>The same, for a drop starting again at the top, also at most 32. Lower than <code class="nw">SPDSTART</code> makes the rain speed up after the first wave.</td></tr>
+        <tr><td><code class="nw">GRAPHIC</code></td><td class="num">16</td><td class="num">16</td><td class="num">16</td><td>The chance out of 256 that a new character is a green graphics block (CoCo 1/2) or an accented foreign letter (CoCo 3).</td></tr>
+        <tr><td><code class="nw">BLOCKGLITCH</code></td><td class="num">128</td><td class="num">255</td><td class="num">255</td><td>The chance out of 256 that a block or foreign letter already in a trail changes when a sweep of the screen reaches it. The sweep covers the whole screen every 4 frames on the CoCo 1/2 and every 8 on the CoCo 3.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>The limits in the table are enforced. Break one, and <code class="nw">lwasm</code> stops with a
+    message such as <code class="nw">SPDSTART must be 32 or less</code>, and the C file stops with a
+    matching <code class="nw">#error</code>.</p>
+
+  <div class="callout caution">
+    <p><span class="tag">Values that stall it</span></p>
+    <p>Two limits aren't enforced. <code class="nw">SPDSTART</code> and <code class="nw">SPDRESET</code> must be
+      at least 1, and <code class="nw">TRAILMAX</code> at least <code class="nw">TRAILMIN</code>. Otherwise the
+      program keeps rerolling a speed or a trail length that can never fit, and nothing
+      falls.</p>
+  </div>
+
+  <div class="callout key">
+    <p><span class="tag">Change the .asm and the .c together</span></p>
+    <p>The test fails until the program and its reference model agree, so every setting
+      you change in <code class="nw">matrix_rain_coco.asm</code> goes into
+      <code class="nw">matrix_rain_coco.c</code> too, and likewise for the CoCo 3 pair.</p>
+  </div>
+
+  <h3 id="frame">Staying inside the frame</h3>
+  <p>A frame's work has to finish before the next TV field starts, 60 times a second.
+    That's 14,934 CPU cycles on a CoCo 1/2 and about 29,980 on a CoCo 3, which runs its
+    CPU twice as fast. A frame that runs over makes the rain miss 60 frames a second. The
+    test reports how close each build comes. As shipped, the busiest frame uses 66% of a
+    field on the CoCo 1/2, 83% on the CoCo 3's 80-column build and 46% on its 40-column
+    build.</p>
+  <p>More drops cost the most. The 80-column CoCo 3 build runs 65 drops because at 70 it
+    runs over a few times a minute, and the test times only 10 frames, which can miss
+    that. After raising <code class="nw">NUMDRIPS</code> or adding work to each drop, watch it run
+    for a minute as well.</p>
+</section>
+
+<section id="build">
+  <h2>Build</h2>
+  <div class="code"><pre>.\build-coco.ps1
+.\build-coco3.ps1</pre></div>
+  <div class="code"><div class="label">Output</div><pre>Built matrix_rain_coco.bin (488 bytes), matrix_rain_coco.cas and matrix_rain_coco.dsk
+
+Built matrix_rain_coco3.bin (711 bytes) and matrix_rain_coco3.cas
+Built matrix_rain_coco3_cmp.bin (708 bytes) and matrix_rain_coco3_cmp.cas
+Built matrix_rain_coco3.dsk holding both</pre></div>
+  <p>Add <code class="nw">-Run</code> to open the result in XRoar, set up for the right machine:</p>
+  <div class="code"><pre>.\build-coco.ps1 -Run              # a CoCo 2B
+.\build-coco3.ps1 -Run             # a CoCo 3 on an RGB monitor, 80 columns
+.\build-coco3.ps1 -Run -Composite  # a CoCo 3 on a TV, 40 columns</pre></div>
+
+  <h3>By hand</h3>
+  <p><code class="nw">lwasm</code> builds the programs. <code class="nw">--decb</code> asks for Disk BASIC's
+    <code class="nw">.bin</code> format, and <code class="nw">-D COMPOSITE</code> selects the CoCo 3's
+    40-column settings:</p>
+  <div class="code"><pre>lwasm --decb -o matrix_rain_coco.bin matrix_rain_coco.asm
+lwasm --decb -o matrix_rain_coco3.bin matrix_rain_coco3.asm
+lwasm --decb -D COMPOSITE -o matrix_rain_coco3_cmp.bin matrix_rain_coco3.asm</pre></div>
+  <p>For the tape and disk images, load the image writers into PowerShell and give them
+    full paths:</p>
+  <div class="code"><pre>. .\tools\coco_images.ps1
+New-CocoCas -Bin "$PWD\matrix_rain_coco.bin" -Name MATRIX -Path "$PWD\matrix_rain_coco.cas"
+New-CocoDsk -Bin "$PWD\matrix_rain_coco.bin" -Name MATRIX -Path "$PWD\matrix_rain_coco.dsk"</pre></div>
+  <p class="muted">With the settings unchanged, each of these commands writes a file
+    identical to the committed one.</p>
+</section>
+
+<section id="check">
+  <h2>Check your change</h2>
+  <div class="code"><pre>.\build-coco.ps1 -Test
+.\build-coco3.ps1 -Test</pre></div>
+  <p>Each script builds everything, then tests it in XRoar with no window. The CoCo 1/2
+    test takes about 10 seconds, and the CoCo 3's about 30, since it tests both builds.
+    The CoCo 1/2 test prints:</p>
+  <div class="code"><div class="label">Output</div><pre>Built matrix_rain_coco.bin (488 bytes), matrix_rain_coco.cas and matrix_rain_coco.dsk
+
+Screen after 400 frames ('.' empty, '*' letter, '#' highlighted letter, 'o' block, '@' highlighted block):
+
+*.........*......*.**..**...#**.
+*.*.......*......*.**..o*....*..
+*.........*......*..*..**....*..
+***.......*............*#.......
+***.......*............*........
+***.......*............*....*..*
+**o....................*....*..*
+***..................*.*....****
+***..................*.#....*.**
+***..................*......****
+***..................*......****
+.**..................*......****
+.*.....o.............*......*o**
+.*.....*.............*......*#**
+.*.....*.............@......*.**
+.*.....o....................****
+
+Screen RAM: all 512 bytes match the reference model after 400 frames
+Other RAM:  unchanged while it ran
+cassette:   loads and runs
+disk:       SKIPPED, no disk11.rom or disk10.rom in C:\Users\Matth\Documents\XRoar\ROMS
+Frame cost: 8,960 cycles on average, 9,830 at most, of a 14,928-cycle field (66% at most)</pre></div>
+  <p>The CoCo 3 test prints a screen for each build, in which <code class="nw">H</code> is a white
+    head, <code class="nw">R</code> a highlighted head, <code class="nw">%</code> a foreign letter, and
+    <code class="nw">+</code>, <code class="nw">*</code> and <code class="nw">:</code> the bright, middle and dark greens.
+    It ends:</p>
+  <div class="code"><div class="label">Output</div><pre>rgb cassette:        loads and runs
+composite cassette:  loads and runs
+disk:                SKIPPED, no disk11.rom or disk10.rom in C:\Users\Matth\Documents\XRoar\ROMS
+
+rgb        frame cost: 20,572 cycles on average, 24,980 at most, of a 29,979-cycle field (83% at most)
+composite  frame cost: 11,744 cycles on average, 13,919 at most, of a 29,979-cycle field (46% at most)</pre></div>
+  <p>What each line checks:</p>
+  <dl class="trouble">
+    <dt>Screen RAM</dt>
+    <dd>After 400 frames, the CoCo's screen memory matches the reference model's, byte
+      for byte. On the CoCo 3 that includes each cell's colours.</dd>
+    <dt>Other RAM</dt>
+    <dd>Nothing outside the screen and the program's own memory changed while it ran.
+      This catches a write to the wrong place.</dd>
+    <dt>cassette and disk</dt>
+    <dd>The tape image loads with <code class="nw">CLOADM</code> and runs. So does the disk image
+      with <code class="nw">LOADM</code>, when <code class="nw">disk11.rom</code> is in the ROM folder; without
+      it the disk check is skipped, which isn't a failure.</dd>
+    <dt>Frame cost</dt>
+    <dd>The cycles frames 101 to 110 took, against the length of a field. See
+      <a href="#frame">Staying inside the frame</a>.</dd>
+  </dl>
+  <p>If you change <code class="nw">tools\coco_images.ps1</code> or <code class="nw">tools\xroar.ps1</code>,
+    run <code class="nw">.\tools\test_coco_tools.ps1</code> too. It prints <code class="nw">PASS</code>,
+    <code class="nw">FAIL</code> or <code class="nw">SKIP</code> for each of its checks.</p>
+</section>
+
+<section id="code">
+  <h2>Changing the code itself</h2>
+  <p>Anything beyond the settings also goes into the reference model, with the random
+    number calls kept in the same order. The program and its reference model draw every
+    random choice from one generator with the same starting seed. Each call moves the
+    generator on, so one extra or missing call changes every choice after it and the two
+    screens drift apart.</p>
+  <p>The tests depend on a few things in the <code class="nw">.asm</code> files:</p>
+  <ul>
+    <li><strong>The labels</strong> <code class="nw">start</code>, <code class="nw">mainloop</code>,
+      <code class="nw">waitsync</code>, <code class="nw">synced</code>, <code class="nw">testdone</code> and
+      <code class="nw">progend</code>. The scripts look up their addresses in <code class="nw">lwasm</code>'s
+      symbol list, to set XRoar's breakpoints and to know where the program sits in
+      memory.</li>
+    <li><strong>The <code class="nw">IFDEF TESTFRAMES</code> blocks.</strong> The tests assemble
+      extra copies with <code class="nw">-D TESTFRAMES=400</code> and similar, which stop after that
+      many frames and wait at <code class="nw">testdone</code> while XRoar saves a snapshot of
+      memory.</li>
+    <li><strong>A program in one piece.</strong> Reserve data with <code class="nw">FCB</code> or
+      <code class="nw">ZMB</code>, not <code class="nw">RMB</code>, which leaves a gap and splits the
+      <code class="nw">.bin</code> in two. The tape writer refuses a split <code class="nw">.bin</code>.</li>
+  </ul>
+  <p>How each screen stores a cell:</p>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th></th><th>CoCo 1/2</th><th>CoCo 3</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Screen</td><td><code class="nw">$0400</code>–<code class="nw">$05FF</code>, 32×16, one byte a cell</td><td>From <code class="nw">$2000</code>, 80×24 or 40×24, two bytes a cell: the character, then its colours</td></tr>
+        <tr><td>Empty cell</td><td><code class="nw">$80</code>, a graphics block with no pixels lit</td><td>A space, in dark green</td></tr>
+        <tr><td>Characters</td><td>Letters <code class="nw">$00</code>–<code class="nw">$3F</code>; bit 6 highlights; green blocks <code class="nw">$81</code>–<code class="nw">$8F</code></td><td>Colours byte: foreground in bits 5–3, background in bits 2–0</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>The CoCo 3 tests run on XRoar's CoCo 3 with 512K of memory
+    (<code class="nw">-machine coco3 -ram 512</code>).</p>
+</section>
+
+<section id="trouble">
+  <h2>If something goes wrong</h2>
+  <dl class="trouble">
+    <dt><code>lwasm not found at … Pass -Lwtools &lt;folder holding lwasm.exe&gt;.</code></dt>
+    <dd>Pass <code class="nw">-Lwtools</code>, as in <a href="#tools">Tools</a>. The same goes for
+      <code class="nw">XRoar not found</code> and <code class="nw">-XRoar</code>.</dd>
+    <dt><code>… cannot be loaded because running scripts is disabled on this system.</code></dt>
+    <dd>Windows is blocking PowerShell scripts. Allow your own scripts once with
+      <code>Set-ExecutionPolicy -Scope CurrentUser RemoteSigned</code>. If you downloaded
+      the repository as a zip, also run
+      <code>Get-ChildItem -Recurse *.ps1 | Unblock-File</code> in its folder.</dd>
+    <dt><code>… differs from the reference model's in … bytes after 400 frames.</code></dt>
+    <dd>The program and its reference model drew different screens. Check that the
+      settings match in both files. The message gives the first place they differ; on the
+      CoCo 3 it names the row, the column and whether the character or its colours
+      differ.</dd>
+    <dt><code>… outside the screen and the program changed while it ran …</code></dt>
+    <dd>The program wrote somewhere it shouldn't. The message gives the first address.</dd>
+    <dt><code>… 400-frame test build never reached testdone. XRoar's log: …</code></dt>
+    <dd>The test copy crashed or got stuck, often because of a setting that stalls it.
+      The log file named in the message shows what XRoar saw.</dd>
+    <dt><code>WARNING: … of 10 frames took longer than a field, so the rain misses 60 fps.</code></dt>
+    <dd>The rain still works but runs slower. See
+      <a href="#frame">Staying inside the frame</a>.</dd>
+    <dt><code>disk: SKIPPED, no disk11.rom or disk10.rom in …</code></dt>
+    <dd>Not a failure. Put <code class="nw">disk11.rom</code> in your ROM folder, or pass
+      <code class="nw">-Roms</code>, to test the disk image too.</dd>
+  </dl>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>Every command above was run on Windows 11 on 18 September 2026, with LWTOOLS 4.25,
+      XRoar 1.9 and cc65 2.19, and the output shown is from those runs. With the settings
+      unchanged, every rebuilt file matched the committed one byte for byte. The disk
+      image checks were skipped, because that machine has no <code class="nw">disk11.rom</code>. The
+      LWTOOLS steps are the ones that built <code class="nw">lwasm</code> there, with Visual Studio
+      2026.</p>
+    <p><a href="running-in-xroar.html">Matrix Rain in XRoar</a> ·
+      <a href="building-for-the-pet.html">Building for the PET</a> ·
+      <a href="../README.md">Back to the README</a></p>
+  </div>
+</footer>
+
+</body>
+</html>
