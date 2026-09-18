@@ -152,26 +152,43 @@ files do not change.
 
 `build-coco.ps1 -Test` does the following, and fails on any mismatch.
 
-1. **Screen matches the reference.** XRoar runs the shipped `.bin`, unmodified.
-   A trap on the main loop fires on its 401st arrival, exactly 400 frames in,
-   and writes a snapshot. The test reads RAM from the snapshot by following the
-   file's chunk structure, not a fixed offset, and compares `$0400`–`$05FF`
-   with the reference model's output. A failure names the first differing
-   address and both values.
-2. **Nothing written outside the screen.** A second snapshot is taken on the
-   first arrival at the main loop, after setup. Every byte of RAM outside the
-   screen (`$0400`–`$05FF`) and the program's own memory (`$0E00` up to the
-   end label, which includes its variables and stack) has to be identical in
-   the two snapshots. This catches a write just past the screen, which would leave the
+**Test builds.** XRoar writes a trap's snapshot about 20 frames after the
+trap fires, and not always the same number (measured while planning). A
+snapshot of the running program therefore cannot capture an exact frame.
+Checks 1, 2 and 4 use test builds instead: the same source assembled with
+`-D TESTFRAMES=n`, which adds a frame count to the main loop and parks the
+program in a loop that writes nothing once `n` frames are drawn. A late
+snapshot of a parked program still shows exactly frame `n`. The shipped
+build is the same source without `TESTFRAMES`; the only difference is that
+block in the main loop.
+
+1. **Screen matches the reference.** XRoar runs the 400-frame test build. A
+   trap at its parking loop writes a snapshot. The test reads RAM from the
+   snapshot by following the file's structure, not a fixed offset, checks that
+   the program's code and tables are intact in RAM, and compares
+   `$0400`–`$05FF` with the reference model's output. A failure names the first
+   differing address and both values.
+2. **Nothing written outside the screen.** A 0-frame test build parks right
+   after setup. Every byte of RAM outside the screen (`$0400`–`$05FF`) and the
+   program's own memory (`$0E00` up to the end label, which includes its
+   variables and stack) has to be identical in its snapshot and the 400-frame
+   one. This catches a write just past the screen, which would leave the
    screen itself matching.
-3. **The images load and run.** The same comparison runs with the program
-   loaded from the `.cas`, and from the `.dsk` when `disk11.rom` (Disk Extended
-   Color BASIC 1.1) is in the ROM folder. Without that ROM the disk check is
+3. **The images load and run.** XRoar loads the shipped `.cas` by typing
+   `CLOADM:EXEC`, and the shipped `.dsk` by typing `LOADM"MATRIX":EXEC` when
+   `disk11.rom` (Disk Extended Color BASIC 1.1) is in the ROM folder. A trap on
+   the main loop proves the program started, and the snapshot's code and tables
+   must match the `.bin` byte for byte. Without the disk ROM, the disk check is
    reported as skipped, never as passed.
 4. **Speed.** Cycles per frame come from XRoar's instruction trace with timings
-   over frames 101–110, excluding the time spent waiting for vertical sync, and
-   are reported against the 14,934-cycle budget with a warning if a frame goes
-   over. Going over slows the animation but is not a failure.
+   over frames 101–110 of a 110-frame test build, excluding the time spent
+   waiting for vertical sync, and are reported against the 14,934-cycle budget
+   with a warning if a frame goes over. Going over slows the animation but is
+   not a failure.
+
+`tools/test_coco_tools.ps1` tests the helper scripts on their own, using a
+small fixture program, `tools/fixtures/fill.asm`, whose screen contents and
+cycles per frame are known.
 
 Tuning: `-Run` opens the program in XRoar to watch. A settings change goes into
 both the assembly and `matrix_rain_coco.c`; the test fails until they agree.
@@ -190,8 +207,11 @@ New:
   parameters, defaulting to this machine's.
 - `tools/coco_images.ps1`: writes the `.cas` and `.dsk` from a `.bin`.
 - `tools/xroar.ps1`: runs XRoar with traps (forward-slash paths, a scratch
-  working folder, a timeout), reads RAM from a snapshot, and sums cycle counts
-  from a trace.
+  working folder, no window, a timeout), reads RAM from a snapshot, reads
+  label addresses from lwasm's symbol dump, and sums cycle counts from a
+  trace.
+- `tools/test_coco_tools.ps1` and `tools/fixtures/fill.asm`: tests for the
+  two tool scripts.
 
 Changed: `README.md` and `CLAUDE.md` gain a CoCo section.
 
@@ -214,12 +234,22 @@ sectors 3–11) and the file stored in 9-sector granules.
 - XRoar treats `\` in option values as an escape, so every path passed to it
   uses forward slashes.
 
-## To confirm early in implementation
+## XRoar behaviour, measured while planning
 
-- The character renderings in XRoar, on both `coco2bus` and `cocous`:
-  `$00`–`$3F` bright green on dark green, `$40`–`$7F` dark on bright green,
-  `$80`–`$8F` green blocks on black, `$C0`–`$CF` buff blocks on black.
-- That XRoar accepts two traps in one run with `-trap-range`; if not, run it
-  twice, which gives the same result because the program is deterministic.
-- XRoar's snapshot chunk layout, its trace line format, and how `-run` starts a
-  `.cas` and a `.dsk`.
+- Several `-trap` options with `-trap-range N` work in one run.
+- Trap snapshots are written about 20 frames late (see Testing).
+- `-trap-trace` starts tracing on the exact instruction; `-trap-no-trace` has
+  no effect. A `pc=` trap on a program's entry address does not fire when
+  `-run` starts it.
+- Snapshots are tagged elements; the RAM is a part named `RAM` whose contents
+  are one element as long as the RAM. Trace lines carry the address and
+  `dt=`, the instruction's time in sixteenths of a CPU cycle.
+- `-type` needs `\r` for Enter. A `.bin` given to `-load` is wiped when BASIC
+  starts, so `.bin` files go through `-run`, and images through
+  `-load-tape`/`-load-fd0` plus a typed command. `-ui null` runs with no
+  window.
+
+Still to confirm, with the user watching: the character renderings on both
+`coco2bus` and `cocous` (`$00`–`$3F` bright green on dark green, `$40`–`$7F`
+dark on bright green, `$80`–`$8F` green blocks on black, `$C0`–`$CF` buff
+blocks on black), and the disk image load once `disk11.rom` is available.
