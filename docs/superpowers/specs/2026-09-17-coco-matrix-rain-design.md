@@ -78,6 +78,15 @@ takes one more random number than on the PET (the `GRAPHIC` roll), so the
 CoCo's sequence of characters is its own, which is fine: the CoCo is checked
 against its own reference model, not against the PET.
 
+Speeds and columns are drawn as `random & $1F`, rerolled while out of range,
+the same way as trail lengths. (Added during implementation.) The PET rerolls
+a whole byte until it falls under `SPDRESET`, 51 tries on average and hundreds
+at worst. Measured over 3,600 frames, that made 45 frames miss the field sync.
+With the mask, none did, and the worst frame left about 5,700 cycles spare.
+The values are still uniform over the same range, so the rain looks the same.
+`SPDSTART`, `SPDRESET` and `NUMDRIPS` must stay at 32 or less; both files
+refuse to build otherwise.
+
 A CoCo 1/2 runs at 0.894886 MHz. An NTSC field is 262 lines of 57 cycles,
 14,934 cycles at 60 Hz. A frame of drawing is expected to take about half of
 that, so the rain should run at the full 60 fps.

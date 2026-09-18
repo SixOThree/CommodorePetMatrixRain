@@ -21,6 +21,8 @@
  *     no pixels lit, which shows as black; letters are masked with $3F;
  *     bit 6 highlights instead of bit 7
  *   - rnd_char() now and then picks a green graphics block
+ *   - speeds and columns are masked to 0-31 before the reroll, as
+ *     trail lengths already were, so no frame overruns the field
  *   - there is no PET entry point
  *
  * Diff the two files to see exactly that list.
@@ -52,6 +54,11 @@
 #define SPDSTART     9      /* initial speed range (0 to N-1, lower=faster) */
 #define SPDRESET     5      /* reset speed range (0 to N-1, lower=faster)   */
 #define GRAPHIC     16      /* graphics block chance (0=never, 255=always)  */
+
+/* Speeds and columns are drawn from 0-31, so these cannot exceed 32. */
+#if SPDSTART > 32 || SPDRESET > 32 || NUMDRIPS > 32
+#error "SPDSTART, SPDRESET and NUMDRIPS must be 32 or less"
+#endif
 
 /* ------------------------------------------------------------
  * Screen geometry and character codes
@@ -241,7 +248,7 @@ static void init(void)
 
     for (i = 0; i < NUMDRIPS; ++i) {
         do {
-            n = rnd();
+            n = rnd() & 0x1f;
         } while (n >= SPDSTART);
         speed[i] = n;
 
@@ -323,14 +330,20 @@ static void draw(void)
         if (other >= SCREEN_SIZE) {
             /* The whole drop has left the screen. Recycle it: new
              * column, new speed, new trail. Reset drops are faster
-             * than the initial ones, which makes the rain accelerate. */
+             * than the initial ones, which makes the rain accelerate.
+             *
+             * Both are drawn from 0-31 and rerolled while out of range,
+             * the way rnd_trail() works. The PET rerolled a whole byte
+             * until it fell under SPDRESET, which takes 51 tries on
+             * average and hundreds at worst: on the CoCo that made about
+             * one frame in 80 miss the field sync. */
             do {
-                headch = rnd();
+                headch = rnd() & 0x1f;
             } while (headch >= COLS);
             POS_SET(col, headch);
 
             do {
-                headch = rnd();
+                headch = rnd() & 0x1f;
             } while (headch >= SPDRESET);
             speed[col] = headch;
 

@@ -15,7 +15,11 @@
                  6502 simulator.
               2. Nothing outside the screen and the program's own memory
                  changes while it runs.
-            These use test builds, assembled with TESTFRAMES=n so that
+              3. The cassette image loads with CLOADM and runs, and the
+                 disk image with LOADM when Disk BASIC's ROM is in the
+                 ROM folder; otherwise the disk check is skipped.
+              4. It reports the cycles a frame takes, from a trace.
+            Checks 1, 2 and 4 use test builds, assembled with TESTFRAMES=n so that
             the main loop parks after n frames. XRoar writes a snapshot
             some time after the trap that asks for it, so the program
             has to be holding still by then.
@@ -149,5 +153,51 @@ if ($Test) {
         throw ('{0} bytes outside the screen and the program changed while it ran. The first is at ${1:X4}.' -f $changed.Count, $changed[0])
     }
     Write-Host 'Other RAM:  unchanged while it ran'
+
+    # 3. The images load the shipped program and run it. Each run traps
+    #    on the main loop; the snapshot lands later, but the code and
+    #    tables it checks never change.
+    function Test-Image([string] $What, [string[]] $Load) {
+        $snap = Join-Path $work "$What.sna"
+        if (Test-Path $snap) { Remove-Item $snap }
+        $null = Invoke-XRoar -XRoar $XRoar -WorkDir $work -Machine $Machine -Log "$What.log" -Arguments ($Load + @(
+            '-trap', ('pc=0x{0:X4}' -f $release.Labels['mainloop']),
+            '-trap-snap', (ConvertTo-XRoarPath $snap), '-trap-timeout', '1'))
+        if (-not (Test-Path $snap)) { throw "The $What image never reached the main loop. XRoar's log: $work\$What.log" }
+        $loaded = Read-XRoarRam $snap
+        $image  = (Read-DecbBin $release.Bin).Segments[0]
+        for ($addr = $release.Labels['start']; $addr -lt $image.Address + $image.Bytes.Length; $addr++) {
+            if ($loaded[$addr] -ne $image.Bytes[$addr - $image.Address]) {
+                throw ('The {0} image loaded different bytes from the .bin, first at ${1:X4}.' -f $What, $addr)
+            }
+        }
+        Write-Host ('{0,-11} loads and runs' -f "$What`:")
+    }
+    Test-Image 'cassette' @('-load-tape', (ConvertTo-XRoarPath $cas), '-type', 'CLOADM:EXEC\r')
+    if ((Test-Path (Join-Path $Roms 'disk11.rom')) -or (Test-Path (Join-Path $Roms 'disk10.rom'))) {
+        Test-Image 'disk' @('-machine-cart', 'rsdos', '-load-fd0', (ConvertTo-XRoarPath $dsk), '-type', 'LOADM\"MATRIX\":EXEC\r')
+    } else {
+        Write-Host "disk:       SKIPPED, no disk11.rom or disk10.rom in $Roms"
+    }
+
+    # 4. Cycles per frame, from an instruction trace of frames 101 to 110.
+    #    A frame is timed from one field sync to the next (the synced
+    #    label), so Total is the length of a field. Busy leaves out the
+    #    sync wait. It includes 22 cycles a frame of the test build's
+    #    frame counting.
+    $timed = Build-Coco (Join-Path $work 'test111.bin') 111
+    $trace = Invoke-XRoar -XRoar $XRoar -WorkDir $work -Machine $Machine -Log 'test111.trace' -EmulatedSeconds 20 -Arguments @(
+        '-trace-timing', '-run', (ConvertTo-XRoarPath $timed.Bin),
+        '-trap', ('pc=0x{0:X4}' -f $timed.Labels['mainloop']), '-trap-range', '101', '-trap-trace',
+        '-trap', ('pc=0x{0:X4}' -f $timed.Labels['testdone']), '-trap-timeout', '1')
+    $wait = $timed.Labels['waitsync']
+    $perFrame = @(Measure-XRoarTrace -Trace $trace -FrameStart $timed.Labels['synced'] -Stop $timed.Labels['testdone'] -Idle @($wait, ($wait + 3)))
+    Remove-Item $trace
+    if ($perFrame.Count -ne 10) { throw "Expected 10 traced frames, got $($perFrame.Count)." }
+    $busy  = $perFrame | Measure-Object Busy -Average -Maximum
+    $field = ($perFrame | Measure-Object Total -Average).Average
+    Write-Host ('Frame cost: {0:n0} cycles on average, {1:n0} at most, of a {2:n0}-cycle frame ({3:p0} at most)' -f `
+        $busy.Average, $busy.Maximum, $field, ($busy.Maximum / $field))
+    if ($busy.Maximum -gt $field) { Write-Warning 'A frame took longer than a field, so the rain runs below 60 fps.' }
     return
 }

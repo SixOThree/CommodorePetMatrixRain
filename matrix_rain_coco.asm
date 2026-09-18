@@ -45,6 +45,17 @@ SPDSTART equ  9              ; initial speed range (0 to N-1, lower=faster)
 SPDRESET equ  5              ; reset speed range (0 to N-1, lower=faster)
 GRAPHIC  equ  16             ; graphics block chance (0=never, 255=always)
 
+; Speeds and columns are drawn from 0-31, so these cannot exceed 32.
+         IFGT SPDSTART-32
+         ERROR SPDSTART must be 32 or less
+         ENDC
+         IFGT SPDRESET-32
+         ERROR SPDRESET must be 32 or less
+         ENDC
+         IFGT NUMDRIPS-32
+         ERROR NUMDRIPS must be 32 or less
+         ENDC
+
 ; ------------------------------------------------------------
 ; Constants
 ; ------------------------------------------------------------
@@ -129,7 +140,8 @@ clrloop  std  ,x++
          ldu  #drops
          ldy  #rainhis
          clrb                ; B = drop number = its starting column
-initdrop jsr  random         ; speed: 0 to SPDSTART-1
+initdrop jsr  random         ; speed: 0 to SPDSTART-1, from 0-31 as
+         anda #$1F           ; the trail length is (see RNDTRAIL)
          cmpa #SPDSTART
          bhs  initdrop
          sta  SPD,u
@@ -158,7 +170,7 @@ mainloop
          lda  PIA0PB         ; clear a field sync already flagged
 waitsync lda  PIA0CRB        ; and wait for the next one
          bpl  waitsync
-         jsr  draw
+synced   jsr  draw           ; build-coco.ps1 times frames from here
          bra  mainloop
 
          IFDEF TESTFRAMES
@@ -255,13 +267,20 @@ movedown leax COLS,x
 
 ; New column on the top row, new speed, new trail. Reset drops are
 ; faster than the first ones, which makes the rain accelerate.
+;
+; Both are drawn from 0-31 and rerolled while out of range, the way
+; the PET draws trail lengths. The PET rerolled a whole byte until it
+; fell under 5, which takes 51 tries on average and hundreds at worst;
+; here that made about one frame in 80 miss the field sync.
 recycle  jsr  random
+         anda #$1F
          cmpa #COLS
          bhs  recycle
          ldx  #SCREEN
          leax a,x            ; A is 0-31, so reading it as signed is fine
          stx  POS,u
 newspeed jsr  random
+         anda #$1F
          cmpa #SPDRESET
          bhs  newspeed
          sta  SPD,u

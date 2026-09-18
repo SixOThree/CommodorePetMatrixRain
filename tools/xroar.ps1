@@ -113,10 +113,15 @@ function Read-LwasmSymbols([string] $Path) {
 #   0e06| 4c          INCA        cc=80 a=01 ... dt=32
 # where dt is the instruction's time in sixteenths of a CPU cycle. The
 # first line traced is the exception: its dt is the time since tracing
-# was armed, so the frame it begins is dropped. A frame runs from one
-# line at $FrameStart to the next; Busy leaves out the $Idle addresses,
-# Total does not. Reading stops at the first line at $Stop, and the
-# part-frame before it is dropped too.
+# was armed, so it is never counted, and a frame that begins on it is
+# dropped. A frame runs from one line at $FrameStart to the next; Busy
+# leaves out the $Idle addresses, Total does not. Whatever comes before
+# the first $FrameStart is dropped, and reading stops at the first line
+# at $Stop, dropping the part-frame before it.
+#
+# Put $FrameStart just after a wait for the field sync. Each Total is
+# then one field. Anywhere else, a Total is a field plus this frame's
+# work minus the last one's.
 function Measure-XRoarTrace {
     param(
         [Parameter(Mandatory)] [string] $Trace,
@@ -127,24 +132,26 @@ function Measure-XRoarTrace {
     $idleSet = [Collections.Generic.HashSet[int]]::new()
     foreach ($address in $Idle) { [void] $idleSet.Add($address) }
 
-    $frames = [Collections.Generic.List[object]]::new()
-    $starts = 0
-    $busy   = 0L
-    $total  = 0L
-    $reader = [IO.StreamReader]::new($Trace)
+    $frames  = [Collections.Generic.List[object]]::new()
+    $inFrame = $false       # inside a frame that began on a countable line
+    $first   = $true
+    $busy    = 0L
+    $total   = 0L
+    $reader  = [IO.StreamReader]::new($Trace)
     try {
         while ($null -ne ($line = $reader.ReadLine())) {
             if ($line.Length -lt 5 -or $line[4] -ne '|') { continue }
             $pc = [Convert]::ToInt32($line.Substring(0, 4), 16)
             if ($pc -eq $Stop) { break }
             if ($pc -eq $FrameStart) {
-                if ($starts -ge 2) {
+                if ($inFrame) {
                     $frames.Add([pscustomobject] @{ Busy = $busy / 16; Total = $total / 16 })
                 }
-                $starts++
-                $busy  = 0L
-                $total = 0L
+                $inFrame = -not $first
+                $busy    = 0L
+                $total   = 0L
             }
+            if ($first) { $first = $false; continue }
             $i = $line.LastIndexOf('dt=')
             if ($i -lt 0) { continue }
             $dt = [long] $line.Substring($i + 3).Trim()

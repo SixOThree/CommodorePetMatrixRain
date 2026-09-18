@@ -1,5 +1,11 @@
 # CoCo 1/2 Matrix Rain Implementation Plan
 
+> **Deviations made during execution** (the code in the repo is authoritative):
+> - Task 2: `Get-Offset`'s parameter was renamed from `$Sector` to `$Number`. PowerShell names are case-insensitive, so `$Sector` hid the sector size and broke every offset except granule 0.
+> - Task 4: the loop back to `nextdrop` is `LBNE`, because `DRAW` is longer than a short branch can reach.
+> - Task 5: frames are timed from a new `synced` label, just after the sync wait, not from `mainloop`. Timed from `mainloop`, a frame's total is a field plus this frame's work minus the last one's. `Measure-XRoarTrace` now skips only the first traced line's time and whatever precedes the first frame start. The timing build is `TESTFRAMES=111`, traced from the 101st pass.
+> - Task 5: speeds and columns are masked to 0-31 before the reroll, in both the `.asm` and the `.c`. The PET's full-byte reroll made 45 of 3,600 frames overrun the field. With the mask, none did.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** A 6809 assembly version of the matrix rain for the TRS-80 Color Computer 1/2, with tape and disk images, checked byte for byte against a C reference model in XRoar.
