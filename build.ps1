@@ -7,7 +7,9 @@
 
     -Run       launches the result in VICE xpet afterwards.
     -Test      builds for cc65's 6502 simulator instead and prints the
-               screen as text, plus the measured cost of a frame.
+               screen as text. It then runs the assembly version in the
+               same simulator, fails unless every byte of screen RAM
+               matches, and reports the cost of a frame for both.
 
 .EXAMPLE
     .\build.ps1
@@ -41,26 +43,60 @@ $output = 'matrix_rain_8032_c.prg'
 $flags = @('-Oi', '-Cl')
 
 if ($Test) {
-    $bin = Join-Path $env:TEMP 'matrix_rain_sim.bin'
-    & $cl65 -t sim6502 @flags -o $bin $source
-    if ($LASTEXITCODE -ne 0) { throw 'simulator build failed' }
+    $frames = 400
 
-    Write-Host "`nScreen after 400 frames ('.' empty, '*' normal, '#' reverse):`n"
-    & $sim65 $bin
+    # Runs the shipped assembly .prg in the same simulator, so the C
+    # version can be checked and timed against it. See tools\asm_harness.c.
+    $harness = @('-C', 'tools\sim_asm.cfg', 'tools\asm_harness.c', 'tools\asm_blob.s')
 
-    # Two runs of different lengths, so init and the text dump cancel out
-    # and what is left is 1000 frames of drawing.
-    $cycles = @{}
-    foreach ($n in 100, 1100) {
-        $b = Join-Path $env:TEMP "matrix_rain_sim_$n.bin"
-        & $cl65 -t sim6502 @flags "-DSIM_FRAMES=$n" -o $b $source
-        $out = & $sim65 -c $b 2>&1 | Select-String -Pattern '(\d+) cycles'
-        $cycles[$n] = [int] $out.Matches[0].Groups[1].Value
+    # Builds for the simulator, runs the result and returns its output.
+    function Invoke-Sim([string] $name, [string[]] $arguments, [switch] $Cycles) {
+        $bin = Join-Path $env:TEMP "matrix_rain_$name.bin"
+        & $cl65 -t sim6502 @flags @arguments -o $bin
+        if ($LASTEXITCODE -ne 0) { throw "simulator build failed ($name)" }
+        $out = if ($Cycles) { & $sim65 -c $bin 2>&1 } else { & $sim65 $bin }
+        if ($LASTEXITCODE -ne 0) { throw "$name failed in the simulator:`n$($out -join "`n")" }
+        $out
     }
-    $perFrame = ($cycles[1100] - $cycles[100]) / 1000
+
+    # Cycles for one frame. Two runs of different lengths, so startup and
+    # init cancel out and what is left is 1000 frames of drawing.
+    function Measure-Frame([string] $name, [string[]] $arguments) {
+        $total = foreach ($n in 100, 1100) {
+            $out = Invoke-Sim "${name}_$n" (@("-DSIM_FRAMES=$n") + $arguments) -Cycles
+            [long] [regex]::Match("$out", '(\d+) cycles').Groups[1].Value
+        }
+        ($total[1] - $total[0]) / 1000
+    }
+
+    Write-Host "`nScreen after $frames frames ('.' empty, '*' normal, '#' reverse):`n"
+    Invoke-Sim 'c' @("-DSIM_FRAMES=$frames", $source) | Write-Host
+
+    # Same seed, same number of frames: all 2048 bytes of screen RAM,
+    # including the 48 past the last visible row, have to come out
+    # exactly as the assembly leaves them.
+    $size      = 2048
+    $cScreen   = @(Invoke-Sim 'c_raw' @('-DSIM_RAW', "-DSIM_FRAMES=$frames", $source))
+    $asmScreen = @(Invoke-Sim 'asm_raw' (@('-DSIM_RAW', "-DSIM_FRAMES=$frames") + $harness))
+    if ($asmScreen.Count -ne $size) { throw "The assembly harness printed $($asmScreen.Count) lines, not $size." }
+    if ($cScreen.Count -ne $size)   { throw "The C version printed $($cScreen.Count) lines, not $size." }
+
+    $diff = @(0..($size - 1) | Where-Object { $cScreen[$_] -ne $asmScreen[$_] })
+    if ($diff.Count -gt 0) {
+        $at = $diff[0]
+        throw ('Screen RAM differs from the assembly''s in {0:n0} of {1:n0} bytes after {2} frames. ' +
+               'The first is at ${3:x4}: C has ${4}, the assembly ${5}.') -f `
+            $diff.Count, $size, $frames, (0x8000 + $at), $cScreen[$at], $asmScreen[$at]
+    }
+    Write-Host ("`nScreen RAM: all {0:n0} bytes match the assembly's after {1} frames" -f $size, $frames)
+
+    $perFrame = Measure-Frame 'c' @($source)
+    $asmFrame = Measure-Frame 'asm' $harness
     $budget   = 16667    # 1 MHz / 60 Hz
-    Write-Host ("`nFrame cost: {0:n0} cycles ({1:n2}x the {2:n0}-cycle retrace budget, about {3:n0} fps)" -f `
+    Write-Host ("Frame cost: {0:n0} cycles ({1:n2}x the {2:n0}-cycle retrace budget, about {3:n0} fps)" -f `
         $perFrame, ($perFrame / $budget), $budget, (1e6 / $perFrame))
+    Write-Host ("Assembly:   {0:n0} cycles, so the C version takes {1:n2}x as long" -f `
+        $asmFrame, ($perFrame / $asmFrame))
     return
 }
 
