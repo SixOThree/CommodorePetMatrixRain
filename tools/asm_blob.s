@@ -1,6 +1,6 @@
 ; The shipped 8032 binary, minus its two-byte load address, for
 ; asm_harness.c to copy into place. The path is relative to the
-; repository root, which is where build.ps1 runs cl65 from.
+; pet folder, which is where pet\build.ps1 runs cl65 from.
 
         .export _pet_prg, _pet_prg_end
 

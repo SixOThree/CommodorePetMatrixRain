@@ -25,9 +25,9 @@
             has to be holding still by then.
 
 .EXAMPLE
-    .\build-coco.ps1
-    .\build-coco.ps1 -Run
-    .\build-coco.ps1 -Test
+    .\coco\build.ps1
+    .\coco\build.ps1 -Run
+    .\coco\build.ps1 -Test
 #>
 
 [CmdletBinding()]
@@ -42,8 +42,8 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-. (Join-Path $PSScriptRoot 'tools\xroar.ps1')
-. (Join-Path $PSScriptRoot 'tools\coco_images.ps1')
+. (Join-Path $PSScriptRoot '..\tools\xroar.ps1')
+. (Join-Path $PSScriptRoot '..\tools\coco_images.ps1')
 
 $lwasm  = Join-Path $Lwtools 'lwasm.exe'
 $source = Join-Path $PSScriptRoot 'matrix_rain_coco.asm'

@@ -2,7 +2,7 @@
  * Matrix Rain Effect (TRS-80 Color Computer 3) - C reference
  * ============================================================
  * The reference model for matrix_rain_coco3.asm. It builds only for
- * cc65's 6502 simulator, not for the CoCo: build-coco3.ps1 -Test runs
+ * cc65's 6502 simulator, not for the CoCo: build.ps1 -Test runs
  * it for 400 frames and requires the 6809 program to leave screen RAM,
  * characters and attributes, exactly as this does.
  * Original from Petopia demo by Milasoft.

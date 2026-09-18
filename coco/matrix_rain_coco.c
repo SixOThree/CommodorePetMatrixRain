@@ -2,7 +2,7 @@
  * Matrix Rain Effect (TRS-80 Color Computer 1/2) - C reference
  * ============================================================
  * The reference model for matrix_rain_coco.asm. It builds only for
- * cc65's 6502 simulator, not for the CoCo: build-coco.ps1 -Test runs
+ * cc65's 6502 simulator, not for the CoCo: build.ps1 -Test runs
  * it for 400 frames and requires the 6809 program to leave screen RAM
  * exactly as this does.
  * Original from Petopia demo by Milasoft.
@@ -412,7 +412,7 @@ static void flicker(void)
  * letter, 'o' green block, '@' highlighted (buff) block.
  *
  * Built with SIM_RAW, print every byte of screen RAM in hex instead,
- * one per line, for build-coco.ps1 -Test to compare with the CoCo's. */
+ * one per line, for build.ps1 -Test to compare with the CoCo's. */
 static void dump(void)
 {
 #ifdef SIM_RAW

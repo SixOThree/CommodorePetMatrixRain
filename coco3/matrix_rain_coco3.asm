@@ -16,7 +16,7 @@
 ;       80x24, 65 drops, palette for an RGB monitor
 ;   lwasm --decb -D COMPOSITE -o matrix_rain_coco3_cmp.bin matrix_rain_coco3.asm
 ;       40x24, 40 drops, palette for a TV or composite monitor
-; (build-coco3.ps1 does both and writes the tape and disk images.)
+; (build.ps1 does both and writes the tape and disk images.)
 ; Run:    LOADM"MATRIX3":EXEC, or MATRIX3C for composite
 ;
 ; Memory map (as BASIC leaves the MMU, logical $0000 = physical $70000):
@@ -31,7 +31,7 @@
 ; Attribute byte: bits 5-3 foreground (palette slots 8-15),
 ; bits 2-0 background (slots 0-7), bits 7-6 (blink, underline) clear.
 ;
-; matrix_rain_coco3.c is the reference model. build-coco3.ps1 -Test
+; matrix_rain_coco3.c is the reference model. build.ps1 -Test
 ; requires this program to leave screen RAM exactly as it does, so a
 ; change to any setting below goes into both files.
 ; ============================================================
@@ -224,7 +224,7 @@ mainloop
          lda  PIA0PB         ; clear a field sync already flagged
 waitsync lda  PIA0CRB        ; and wait for the next one
          bpl  waitsync
-synced   jsr  draw           ; build-coco3.ps1 times frames from here
+synced   jsr  draw           ; build.ps1 times frames from here
          jsr  flicker
          bra  mainloop
 

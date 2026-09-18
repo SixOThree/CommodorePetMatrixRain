@@ -9,7 +9,7 @@
 ; ============================================================
 ;
 ; Build:  lwasm --decb -o matrix_rain_coco.bin matrix_rain_coco.asm
-;         (build-coco.ps1 does this and writes tape and disk images)
+;         (build.ps1 does this and writes tape and disk images)
 ; Run:    LOADM"MATRIX":EXEC from disk, CLOADM"MATRIX":EXEC from tape
 ;
 ; Memory map:
@@ -26,7 +26,7 @@
 ;   $80-$8F  green graphics blocks on black; $80 has no pixels lit
 ;   $C0-$CF  buff graphics blocks: a highlighted green block
 ;
-; matrix_rain_coco.c is the reference model. build-coco.ps1 -Test
+; matrix_rain_coco.c is the reference model. build.ps1 -Test
 ; requires this program to leave screen RAM exactly as it does, so a
 ; change to any setting below goes into both files.
 ; ============================================================
@@ -178,7 +178,7 @@ mainloop
          lda  PIA0PB         ; clear a field sync already flagged
 waitsync lda  PIA0CRB        ; and wait for the next one
          bpl  waitsync
-synced   jsr  draw           ; build-coco.ps1 times frames from here
+synced   jsr  draw           ; build.ps1 times frames from here
          jsr  flicker
          bra  mainloop
 

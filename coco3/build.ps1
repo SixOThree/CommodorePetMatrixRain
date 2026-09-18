@@ -31,10 +31,10 @@
             program has to be holding still by then.
 
 .EXAMPLE
-    .\build-coco3.ps1
-    .\build-coco3.ps1 -Run
-    .\build-coco3.ps1 -Run -Composite
-    .\build-coco3.ps1 -Test
+    .\coco3\build.ps1
+    .\coco3\build.ps1 -Run
+    .\coco3\build.ps1 -Run -Composite
+    .\coco3\build.ps1 -Test
 #>
 
 [CmdletBinding()]
@@ -49,8 +49,8 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-. (Join-Path $PSScriptRoot 'tools\xroar.ps1')
-. (Join-Path $PSScriptRoot 'tools\coco_images.ps1')
+. (Join-Path $PSScriptRoot '..\tools\xroar.ps1')
+. (Join-Path $PSScriptRoot '..\tools\coco_images.ps1')
 
 $lwasm     = Join-Path $Lwtools 'lwasm.exe'
 $source    = Join-Path $PSScriptRoot 'matrix_rain_coco3.asm'

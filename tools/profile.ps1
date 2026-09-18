@@ -24,7 +24,7 @@
 
     Early frames are cheaper than later ones, because some drops start
     above the screen, so the total here comes in under the per-frame
-    figure from build.ps1 -Test, which averages frames 101 to 1100.
+    figure from pet\build.ps1 -Test, which averages frames 101 to 1100.
 
 .EXAMPLE
     .\tools\profile.ps1
@@ -41,12 +41,12 @@ $root  = Split-Path $PSScriptRoot -Parent
 $cl65  = Join-Path $Cc65 'bin\cl65.exe'
 $sim65 = Join-Path $Cc65 'bin\sim65.exe'
 $work  = Join-Path $env:TEMP 'matrix_rain_profile'
-$flags = @('-Oi', '-Cl')    # the same flags build.ps1 uses
+$flags = @('-Oi', '-Cl')    # the same flags pet\build.ps1 uses
 
 if (-not (Test-Path $cl65)) { throw "cl65 not found at $cl65. Pass -Cc65 <path to cc65>." }
 New-Item -ItemType Directory -Force $work | Out-Null
 
-$source  = Join-Path $root 'matrix_rain_8032.c'
+$source  = Join-Path $root 'pet\matrix_rain_8032.c'
 $lines   = Get-Content $source
 $static  = '^static (?=[\w ]+\([^;]*\)\s*$)'
 if (-not ($lines -match $static)) { throw 'Found no static function definitions to expose.' }
