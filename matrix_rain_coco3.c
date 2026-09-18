@@ -66,7 +66,7 @@
 #define TRAILMAX    23
 #define REVERSE     64
 #define NEWCHAR     51
-#define NUMDRIPS    70
+#define NUMDRIPS    65      /* the PET's 70 misses the 60 Hz field now and then */
 #define SPDSTART     9
 #define SPDRESET     5
 #define GRAPHIC     16

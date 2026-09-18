@@ -13,7 +13,7 @@
 ;
 ; Two builds from this file:
 ;   lwasm --decb -o matrix_rain_coco3.bin matrix_rain_coco3.asm
-;       80x24, 70 drops, palette for an RGB monitor
+;       80x24, 65 drops, palette for an RGB monitor
 ;   lwasm --decb -D COMPOSITE -o matrix_rain_coco3_cmp.bin matrix_rain_coco3.asm
 ;       40x24, 40 drops, palette for a TV or composite monitor
 ; (build-coco3.ps1 does both and writes the tape and disk images.)
@@ -65,7 +65,7 @@ TRAILMIN equ  10
 TRAILMAX equ  23
 REVERSE  equ  64
 NEWCHAR  equ  51
-NUMDRIPS equ  70
+NUMDRIPS equ  65             ; the PET's 70 misses the 60 Hz field now and then
 SPDSTART equ  9
 SPDRESET equ  5
 GRAPHIC  equ  16
@@ -116,6 +116,20 @@ SPD      equ  2              ; frames between moves (0=fastest)
 DEL      equ  3              ; frames waited so far
 TRL      equ  4              ; trail length in rows
 RECSIZE  equ  5
+
+; RAND: the next random number into A, the LFSR step written inline.
+; RANDOM is this plus RTS. DRAW uses RAND for the rolls every drop makes
+; every frame, where a JSR and RTS would cost 13 cycles more each.
+; Preserves B, X, Y and U.
+RAND     macro
+         lda  <seedhi
+         lsra
+         rol  <seedlo
+         bcc  @keep
+         eora #$B4           ; LFSR tap polynomial
+@keep    sta  <seedhi
+         eora <seedlo
+         endm
 
          org  $0E00
          setdp $0E
@@ -237,7 +251,7 @@ nextdrop ldx  POS,u
 ; Head: usually keep what is there, sometimes pick anew. An empty cell
 ; always gets a fresh character. A kept character keeps a head's
 ; colours, and turns white if it belonged to another drop's trail.
-         jsr  random
+         RAND
          cmpa #NEWCHAR
          bhs  keephead
          jsr  rndhead        ; A = character, B = attribute
@@ -264,10 +278,10 @@ writehead
          leay -ROWBYTES,x
          cmpy #SCREEN
          blo  timing
-         jsr  random
+         RAND
          cmpa #GLITCH
          bhs  timing
-         jsr  random
+         RAND
          anda #$0F           ; rows 1-15 up from the head
          beq  timing         ; row 0 is the head itself
          cmpa TRL,u
@@ -368,34 +382,70 @@ setattrx rts
 ; Each frame sweeps an eighth of the screen, a different eighth each
 ; time, so every cell is visited every 8 frames. A foreign letter
 ; found in a trail (not a head) becomes another with chance
-; BLOCKGLITCH. B counts the cells.
+; BLOCKGLITCH.
+;
+; The loop takes four cells a pass, so its overhead is paid once for
+; four; most cells hold no foreign letter and cost a load, a compare
+; and an untaken branch. B counts the passes. Cells are still visited
+; in order, so random numbers are used exactly as in the reference.
 ; ============================================================
 
+         IFNE SWEEPCELLS&3
+         ERROR SWEEPCELLS must be a multiple of 4
+         ENDC
+
 flicker  ldx  <sweep
-         ldb  #SWEEPCELLS
-flickcell
+         ldb  #SWEEPCELLS/4
+flickpass
          lda  ,x             ; foreign letters are below $20
          cmpa #FOREIGN
-         bhs  flicknext
-         lda  1,x            ; heads are left to DRAW
-         cmpa #HEAD
-         beq  flicknext
-         cmpa #REVHEAD
-         beq  flicknext
-         jsr  random
-         cmpa #BLOCKGLITCH
-         bhs  flicknext
-         jsr  rndforeign
-         sta  ,x
+         blo  flick0
+flickc1  lda  2,x
+         cmpa #FOREIGN
+         blo  flick1
+flickc2  lda  4,x
+         cmpa #FOREIGN
+         blo  flick2
+flickc3  lda  6,x
+         cmpa #FOREIGN
+         blo  flick3
 flicknext
-         leax 2,x
+         leax 8,x
          decb
-         bne  flickcell
+         bne  flickpass
          cmpx #SCREENEND     ; after the last eighth, back to the top
          bne  flicksave
          ldx  #SCREEN
 flicksave
          stx  <sweep
+         rts
+
+flick0   leay ,x
+         bsr  flickone
+         bra  flickc1
+flick1   leay 2,x
+         bsr  flickone
+         bra  flickc2
+flick2   leay 4,x
+         bsr  flickone
+         bra  flickc3
+flick3   leay 6,x
+         bsr  flickone
+         bra  flicknext
+
+; FLICKONE: the foreign letter in the cell at Y, unless it is a head,
+; becomes another with chance BLOCKGLITCH. Preserves B and X.
+flickone lda  1,y            ; heads are left to DRAW
+         cmpa #HEAD
+         beq  flickonex
+         cmpa #REVHEAD
+         beq  flickonex
+         jsr  random
+         cmpa #BLOCKGLITCH
+         bhs  flickonex
+         jsr  rndforeign
+         sta  ,y
+flickonex
          rts
 
 ; ============================================================
@@ -447,17 +497,11 @@ rndtrail jsr  random
          rts
 
 ; ============================================================
-; RANDOM - 16-bit LFSR, the PET routine instruction for instruction.
-; Out: A. Preserves B, X, Y and U.
+; RANDOM - 16-bit LFSR, the PET routine instruction for instruction
+; (see RAND). Out: A. Preserves B, X, Y and U.
 ; ============================================================
 
-random   lda  <seedhi
-         lsra
-         rol  <seedlo
-         bcc  randomx
-         eora #$B4           ; LFSR tap polynomial
-randomx  sta  <seedhi
-         eora <seedlo
+random   RAND
          rts
 
 ; ============================================================

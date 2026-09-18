@@ -10,7 +10,7 @@ It uses the CoCo 3's colour attributes to fade each trail from a white head
 down to dark green, and its 1.79 MHz speed mode to run at 60 fps. There are
 two builds from one source:
 
-- **RGB:** 80×24 with 70 drops, the PET 8032's width, for an RGB monitor
+- **RGB:** 80×24 with 65 drops, the PET 8032's width, for an RGB monitor
   such as the CM-8.
 - **Composite:** 40×24 with 40 drops, the PET 4032's width, for a TV or
   composite monitor. A composite colour signal cannot carry 80 columns:
@@ -145,7 +145,7 @@ table (the 4032's table is its first 40). Rows behind the head are
 
 | Setting | RGB (80 columns) | Composite (40 columns) |
 |---|---|---|
-| `NUMDRIPS` | 70 | 40 |
+| `NUMDRIPS` | 65 (70 missed the field; see Budget) | 40 |
 | `TRAILMIN` / `TRAILMAX` | 10 / 23 | 14 / 23 |
 | `SPDSTART` / `SPDRESET` | 9 / 5 | 15 / 8 |
 | `GLITCH` / `REVERSE` / `NEWCHAR` | 64 / 64 / 51 | 64 / 64 / 51 |
@@ -161,6 +161,24 @@ columns from `random & $7F` rerolled while 80 or more (80 columns), or
 (77%). 40 columns is about half that. The speed test reports the real
 figures; if the 80-column build is too close, `NUMDRIPS` or the sweep size
 comes down.
+
+**Measured during implementation.** At 70 drops the RGB build averaged
+25,866 cycles a frame, peaked at 30,100, and missed the field in 20 of
+3,600 frames. A frame's work swings by about 6,000 cycles, from frames
+where many drops move and recycle at once, so the average alone hides the
+problem. Two changes that leave the random number sequence, and so the
+screen, exactly as before:
+
+- the random number step is written inline (`RAND`) for the three rolls
+  every drop makes every frame, saving a `JSR` and `RTS` (13 cycles)
+  each; `RANDOM` is `RAND` plus `RTS`;
+- the flicker sweep takes four cells a pass, paying the loop's overhead
+  once for four.
+
+Together they saved about 2,900 cycles a frame. At 70 drops that still
+left 2 misses a minute; at 65 there were none in 10,800 frames (three
+minutes), with the tightest frame 1,250 cycles short of the field. The RGB
+build therefore has 65 drops. The composite build peaks at 46%.
 
 ## Reference model
 

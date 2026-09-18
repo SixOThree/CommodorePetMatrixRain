@@ -1,5 +1,10 @@
 # CoCo 3 Matrix Rain Implementation Plan
 
+> **Deviations made during execution** (the code in the repo is authoritative):
+> - Task 3: the speed check compared the slowest frame with the *average* frame length, which a single overrun inflates, so its warning could not fire. It now takes the shortest frame as the field and counts frames over one and a half fields. The same fix went into `build-coco.ps1`.
+> - Task 3: trace runs end with `-trap-timeout 0`, which quits at the trap. A 1-second timeout traced 600,000 more lines at 1.79 MHz, and the CoCo 3 test took over three minutes. It now takes about 30 seconds. The same change went into `build-coco.ps1` and `tools/test_coco_tools.ps1`.
+> - Task 4: the user chose optimisation over simply cutting drops. `RAND`, an inline random step, replaces the `JSR random` for the three per-drop rolls in `draw`, and the flicker sweep is unrolled four cells a pass. Neither changes the random sequence, so the `.c` is unchanged. The RGB build ends at `NUMDRIPS` 65, with no misses in 10,800 frames (70 still missed 2 a minute).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** A CoCo 3 version of the matrix rain in 6809 assembly, with trails that fade from a white head to dark green: an 80×24 RGB build and a 40×24 composite build, each with tape images and a shared disk image, checked byte for byte against a C reference model in XRoar.
