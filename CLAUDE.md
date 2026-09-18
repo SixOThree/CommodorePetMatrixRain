@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a 6502 assembly language project that creates a Matrix-style falling character animation for the Commodore PET 8032 (80-column display). Original concept from Petopia demo by Milasoft.
+Vintage Computing Matrix Rain: a Matrix-style falling character animation for the Commodore PET 8032 and 4032 (6502 assembly, plus a C port) and the TRS-80 Color Computer 1/2 and 3 (6809 assembly). The GitHub repository is SixOThree/VintageComputingMatrixRain, formerly CommodorePetMatrixRain. Original concept from Petopia demo by Milasoft.
 
 ## Layout
 
