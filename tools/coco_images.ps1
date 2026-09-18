@@ -95,15 +95,19 @@ function New-CocoCas {
 # to 11 hold 32-byte directory entries. Granules run two to a track,
 # skipping track 17. A .bin goes on the disk as is, because LOADM reads
 # the same segment format from disk.
+#
+# Several files may be given, each with its own name: they take
+# consecutive granules from granule 0 and consecutive directory entries.
+# -Extension is one for all, or one per file.
 function New-CocoDsk {
     param(
-        [Parameter(Mandatory)] [string] $Bin,
-        [Parameter(Mandatory)] [string] $Name,
-        [string] $Extension = 'BIN',
+        [Parameter(Mandatory)] [string[]] $Bin,
+        [Parameter(Mandatory)] [string[]] $Name,
+        [string[]] $Extension = @('BIN'),
         [Parameter(Mandatory)] [string] $Path
     )
-    $file = [IO.File]::ReadAllBytes($Bin)
-    $null = Read-DecbBin $Bin                       # refuse anything that is not a .bin
+    if ($Name.Count -ne $Bin.Count) { throw 'New-CocoDsk needs one name for each .bin.' }
+    if ($Extension.Count -ne 1 -and $Extension.Count -ne $Bin.Count) { throw 'Give one extension, or one for each .bin.' }
 
     $sector   = 256
     $perTrack = 18
@@ -119,27 +123,36 @@ function New-CocoDsk {
         Get-Offset $track (($G % 2) * 9 + 1)
     }
 
-    $count = [int] [Math]::Ceiling($file.Length / $granule)
-    if ($count -gt 68) { throw "$Bin is too big for one disk." }
-
     $fat = Get-Offset 17 2
     for ($i = 68; $i -lt $sector; $i++) { $disk[$fat + $i] = 0 }
-    for ($g = 0; $g -lt $count; $g++) {
-        $n = [Math]::Min($granule, $file.Length - $g * $granule)
-        [Array]::Copy($file, $g * $granule, $disk, (Get-GranuleOffset $g), $n)
-        $disk[$fat + $g] = if ($g -lt $count - 1) { $g + 1 } else { 0xC0 + [int] [Math]::Ceiling($n / $sector) }
-    }
 
-    $last = $file.Length % $sector
-    if ($last -eq 0) { $last = $sector }
-    $entry = Get-Offset 17 3
-    $label = $Name.ToUpperInvariant().PadRight(8).Substring(0, 8) + $Extension.ToUpperInvariant().PadRight(3).Substring(0, 3)
-    [Text.Encoding]::ASCII.GetBytes($label).CopyTo($disk, $entry)
-    $disk[$entry + 11] = 2                          # machine code
-    $disk[$entry + 12] = 0                          # binary
-    $disk[$entry + 13] = 0                          # first granule
-    $disk[$entry + 14] = $last -shr 8
-    $disk[$entry + 15] = $last -band 0xFF
-    for ($i = 16; $i -lt 32; $i++) { $disk[$entry + $i] = 0 }
+    $next = 0                                        # the next free granule
+    for ($k = 0; $k -lt $Bin.Count; $k++) {
+        $file = [IO.File]::ReadAllBytes($Bin[$k])
+        $null = Read-DecbBin $Bin[$k]                # refuse anything that is not a .bin
+
+        $count = [int] [Math]::Ceiling($file.Length / $granule)
+        if ($next + $count -gt 68) { throw 'The files do not fit on one disk.' }
+        $first = $next
+        for ($g = 0; $g -lt $count; $g++) {
+            $n = [Math]::Min($granule, $file.Length - $g * $granule)
+            [Array]::Copy($file, $g * $granule, $disk, (Get-GranuleOffset ($first + $g)), $n)
+            $disk[$fat + $first + $g] = if ($g -lt $count - 1) { $first + $g + 1 } else { 0xC0 + [int] [Math]::Ceiling($n / $sector) }
+        }
+        $next += $count
+
+        $last = $file.Length % $sector
+        if ($last -eq 0) { $last = $sector }
+        $ext   = if ($Extension.Count -eq 1) { $Extension[0] } else { $Extension[$k] }
+        $entry = (Get-Offset 17 3) + 32 * $k
+        $label = $Name[$k].ToUpperInvariant().PadRight(8).Substring(0, 8) + $ext.ToUpperInvariant().PadRight(3).Substring(0, 3)
+        [Text.Encoding]::ASCII.GetBytes($label).CopyTo($disk, $entry)
+        $disk[$entry + 11] = 2                      # machine code
+        $disk[$entry + 12] = 0                      # binary
+        $disk[$entry + 13] = $first                 # first granule
+        $disk[$entry + 14] = $last -shr 8
+        $disk[$entry + 15] = $last -band 0xFF
+        for ($i = 16; $i -lt 32; $i++) { $disk[$entry + $i] = 0 }
+    }
     [IO.File]::WriteAllBytes($Path, $disk)
 }

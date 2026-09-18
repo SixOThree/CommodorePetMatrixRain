@@ -133,6 +133,17 @@ Check 'disk: a 3,010-byte file chains granule 0 to granule 1' ($lk[$fat] -eq 1 -
 Check 'disk: and fills them in order' ((Hex $lk[0..3009]) -eq (Hex $longBytes))
 Check 'disk: 194 bytes in its last sector' (($lk[$dir + 14] * 256 + $lk[$dir + 15]) -eq 194)
 
+$twoDsk = Join-Path $work 'two.dsk'
+New-CocoDsk -Bin $bin, $big -Name 'FILL', 'BIG' -Path $twoDsk
+$tk = [IO.File]::ReadAllBytes($twoDsk)
+$bigBytes = [IO.File]::ReadAllBytes($big)
+Check 'disk, two files: FILL.BIN then BIG.BIN in the directory' (
+    [Text.Encoding]::ASCII.GetString($tk, $dir, 11) -eq 'FILL    BIN' -and
+    [Text.Encoding]::ASCII.GetString($tk, $dir + 32, 11) -eq 'BIG     BIN')
+Check 'disk, two files: FILL starts in granule 0, BIG in granule 1' ($tk[$dir + 13] -eq 0 -and $tk[$dir + 32 + 13] -eq 1)
+Check 'disk, two files: each is its own last granule' ($tk[$fat] -eq 0xC1 -and $tk[$fat + 1] -eq 0xC3)
+Check 'disk, two files: granule 1 holds BIG.BIN' ((Hex $tk[2304..(2304 + $bigBytes.Length - 1)]) -eq (Hex $bigBytes))
+
 # --- XRoar ---
 if (-not (Test-Path $XRoar)) { throw "XRoar not found at $XRoar" }
 . (Join-Path $PSScriptRoot 'xroar.ps1')
@@ -183,6 +194,46 @@ Check 'trace: 10 whole frames between the 2nd pass and DONE' ($frames.Count -eq 
 Check 'trace: every frame does exactly 523 cycles of work' (@($frames | Where-Object { $_.Busy -ne 523 }).Count -eq 0) (($frames | ForEach-Object Busy) -join ', ')
 $field = ($frames | Measure-Object Total -Average).Average
 Check 'trace: a frame lasts one NTSC field, 14,934 cycles' ($field -gt 14900 -and $field -lt 14970) "average $field"
+
+# --- CoCo 3 ---
+# The fixture on a 512K CoCo 3. BASIC maps the processor's $0000 to
+# physical $70000, and a snapshot holds RAM in physical order.
+$snap3 = Join-Path $work 'coco3.sna'
+if (Test-Path $snap3) { Remove-Item $snap3 }
+$null = Invoke-XRoar -XRoar $XRoar -WorkDir $work -Machine 'coco3' -Log 'coco3.log' -Arguments @(
+    '-ram', '512', '-run', (ConvertTo-XRoarPath $bin),
+    '-trap', ('pc=0x{0:X4}' -f $labels['done']), '-trap-snap', (ConvertTo-XRoarPath $snap3), '-trap-timeout', '1')
+if (Test-Path $snap3) {
+    $ram3 = Read-XRoarRam $snap3
+    Check 'coco3: the snapshot holds 512K of RAM' ($ram3.Length -eq 524288) "got $($ram3.Length)"
+    $bad3 = @(0..511 | Where-Object { $ram3[0x70400 + $_] -ne ($_ % 256) })
+    Check 'coco3: the screen is at physical $70400' ($bad3.Count -eq 0) "$($bad3.Count) bytes wrong"
+    $seg3  = $fixture.Segments[0]
+    $code3 = [byte[]]::new($seg3.Bytes.Length)
+    [Array]::Copy($ram3, 0x70000 + $seg3.Address, $code3, 0, $code3.Length)
+    Check 'coco3: the program is at physical $70E00' ((Hex $code3) -eq (Hex $seg3.Bytes))
+} else {
+    Check 'coco3: reaches DONE' $false "no snapshot, see $work\coco3.log"
+}
+
+# At 1.79 MHz a trace's dt counts eighths of a cycle.
+$fast    = Join-Path $work 'fillfast.bin'
+$fastSym = Join-Path $work 'fillfast.sym'
+& (Join-Path $Lwtools 'lwasm.exe') --decb -D FAST -o $fast "--symbol-dump=$fastSym" (Join-Path $PSScriptRoot 'fixtures\fill.asm')
+if ($LASTEXITCODE -ne 0) { throw 'the FAST fixture did not assemble' }
+$fastLabels = Read-LwasmSymbols $fastSym
+$trace3 = Invoke-XRoar -XRoar $XRoar -WorkDir $work -Machine 'coco3' -Log 'fillfast.trace' -Arguments @(
+    '-ram', '512', '-trace-timing', '-run', (ConvertTo-XRoarPath $fast),
+    '-trap', ('pc=0x{0:X4}' -f $fastLabels['mainloop']), '-trap-range', '2', '-trap-trace',
+    '-trap', ('pc=0x{0:X4}' -f $fastLabels['done']), '-trap-timeout', '1')
+$wait3 = $fastLabels['waitsync']
+$frames3 = @(Measure-XRoarTrace -Trace $trace3 -FrameStart $fastLabels['mainloop'] -Stop $fastLabels['done'] `
+    -Idle @($wait3, ($wait3 + 3)) -TicksPerCycle 8)
+Remove-Item $trace3
+Check 'trace at 1.79 MHz: 10 whole frames' ($frames3.Count -eq 10) "got $($frames3.Count)"
+Check 'trace at 1.79 MHz: every frame does exactly 523 cycles of work' (@($frames3 | Where-Object { $_.Busy -ne 523 }).Count -eq 0) (($frames3 | ForEach-Object Busy) -join ', ')
+$field3 = ($frames3 | Measure-Object Total -Average).Average
+Check 'trace at 1.79 MHz: a frame lasts one CoCo 3 field, about 29,982 cycles' ($field3 -gt 29900 -and $field3 -lt 30060) "average $field3"
 
 # --- summary ---
 Write-Host ''

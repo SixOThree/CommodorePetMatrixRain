@@ -75,7 +75,9 @@ function Read-XRoarNumber([byte[]] $Bytes, [ref] $At) {
 }
 
 # The RAM is a part named "RAM" of type "ram". Its contents are the one
-# element in it exactly as long as a CoCo's RAM.
+# element in it exactly as long as the machine's RAM: 16K to 64K on a
+# CoCo 1/2, 128K or 512K on a CoCo 3. A CoCo 3's is in physical order;
+# as BASIC maps memory, the processor's $0000 is physical $70000.
 function Read-XRoarRam([string] $Snapshot) {
     $bytes = [IO.File]::ReadAllBytes($Snapshot)
     $text  = [Text.Encoding]::Latin1.GetString($bytes)
@@ -88,7 +90,7 @@ function Read-XRoarRam([string] $Snapshot) {
         $tag = Read-XRoarNumber $bytes ([ref] $at)
         if ($tag -eq 0) { continue }
         $length = Read-XRoarNumber $bytes ([ref] $at)
-        if ($length -in 16384, 32768, 65536) {
+        if ($length -in 16384, 32768, 65536, 131072, 524288) {
             $ram = [byte[]]::new($length)
             [Array]::Copy($bytes, $at, $ram, 0, $length)
             return ,$ram
@@ -111,7 +113,9 @@ function Read-LwasmSymbols([string] $Path) {
 
 # Trace lines, one per instruction, look like
 #   0e06| 4c          INCA        cc=80 a=01 ... dt=32
-# where dt is the instruction's time in sixteenths of a CPU cycle. The
+# where dt is the instruction's time in ticks of the 14.318 MHz master
+# clock: 16 a CPU cycle at 0.89 MHz (the default -TicksPerCycle), 8 at
+# a CoCo 3's 1.79 MHz. The
 # first line traced is the exception: its dt is the time since tracing
 # was armed, so it is never counted, and a frame that begins on it is
 # dropped. A frame runs from one line at $FrameStart to the next; Busy
@@ -127,7 +131,8 @@ function Measure-XRoarTrace {
         [Parameter(Mandatory)] [string] $Trace,
         [Parameter(Mandatory)] [int]    $FrameStart,
         [Parameter(Mandatory)] [int]    $Stop,
-        [int[]] $Idle = @()
+        [int[]] $Idle = @(),
+        [int]   $TicksPerCycle = 16
     )
     $idleSet = [Collections.Generic.HashSet[int]]::new()
     foreach ($address in $Idle) { [void] $idleSet.Add($address) }
@@ -145,7 +150,7 @@ function Measure-XRoarTrace {
             if ($pc -eq $Stop) { break }
             if ($pc -eq $FrameStart) {
                 if ($inFrame) {
-                    $frames.Add([pscustomobject] @{ Busy = $busy / 16; Total = $total / 16 })
+                    $frames.Add([pscustomobject] @{ Busy = $busy / $TicksPerCycle; Total = $total / $TicksPerCycle })
                 }
                 $inFrame = -not $first
                 $busy    = 0L
