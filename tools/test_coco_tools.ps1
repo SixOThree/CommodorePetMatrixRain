@@ -133,6 +133,57 @@ Check 'disk: a 3,010-byte file chains granule 0 to granule 1' ($lk[$fat] -eq 1 -
 Check 'disk: and fills them in order' ((Hex $lk[0..3009]) -eq (Hex $longBytes))
 Check 'disk: 194 bytes in its last sector' (($lk[$dir + 14] * 256 + $lk[$dir + 15]) -eq 194)
 
+# --- XRoar ---
+if (-not (Test-Path $XRoar)) { throw "XRoar not found at $XRoar" }
+. (Join-Path $PSScriptRoot 'xroar.ps1')
+
+$labels = Read-LwasmSymbols $sym
+Check 'Read-LwasmSymbols: finds start, mainloop, waitsync and done' (
+    $labels['start'] -eq 0x0E00 -and $labels.ContainsKey('mainloop') -and $labels.ContainsKey('waitsync') -and $labels.ContainsKey('done'))
+
+# Runs the fixture until it parks at DONE and returns its RAM, or $null.
+function Get-FixtureRam([string] $What, [string[]] $Load) {
+    $snap = Join-Path $work "$What.sna"
+    if (Test-Path $snap) { Remove-Item $snap }
+    $null = Invoke-XRoar -XRoar $XRoar -WorkDir $work -Log "$What.log" -Arguments ($Load + @(
+        '-trap', ('pc=0x{0:X4}' -f $labels['done']),
+        '-trap-snap', (ConvertTo-XRoarPath $snap), '-trap-timeout', '1'))
+    if (-not (Test-Path $snap)) { return $null }
+    Read-XRoarRam $snap
+}
+
+function Test-FixtureRam([string] $What, $Ram) {
+    if ($null -eq $Ram) { Check "$What`: reaches DONE" $false "no snapshot, see $work\$What.log"; return }
+    Check "$What`: reaches DONE" $true
+    Check "$What`: the snapshot holds 64K of RAM" ($Ram.Length -eq 65536) "got $($Ram.Length)"
+    $bad = @(0..511 | Where-Object { $Ram[0x400 + $_] -ne ($_ % 256) })
+    Check "$What`: the screen holds the fixture's pattern" ($bad.Count -eq 0) "$($bad.Count) bytes wrong"
+    $seg  = $fixture.Segments[0]
+    $code = [byte[]]::new($seg.Bytes.Length)
+    [Array]::Copy($Ram, $seg.Address, $code, 0, $code.Length)
+    Check "$What`: the program sits where it was loaded" ((Hex $code) -eq (Hex $seg.Bytes))
+}
+
+Test-FixtureRam 'bin' (Get-FixtureRam 'bin' @('-run', (ConvertTo-XRoarPath $bin)))
+Test-FixtureRam 'cassette' (Get-FixtureRam 'cassette' @('-load-tape', (ConvertTo-XRoarPath $cas), '-type', 'CLOADM:EXEC\r'))
+if ((Test-Path (Join-Path $Roms 'disk11.rom')) -or (Test-Path (Join-Path $Roms 'disk10.rom'))) {
+    Test-FixtureRam 'disk' (Get-FixtureRam 'disk' @('-machine-cart', 'rsdos', '-load-fd0', (ConvertTo-XRoarPath $dsk), '-type', 'LOADM\"FILL\":EXEC\r'))
+} else {
+    Write-Host "SKIP  disk: no disk11.rom or disk10.rom in $Roms"
+}
+
+$trace = Invoke-XRoar -XRoar $XRoar -WorkDir $work -Log 'fill.trace' -Arguments @(
+    '-trace-timing', '-run', (ConvertTo-XRoarPath $bin),
+    '-trap', ('pc=0x{0:X4}' -f $labels['mainloop']), '-trap-range', '2', '-trap-trace',
+    '-trap', ('pc=0x{0:X4}' -f $labels['done']), '-trap-timeout', '1')
+$wait = $labels['waitsync']
+$frames = @(Measure-XRoarTrace -Trace $trace -FrameStart $labels['mainloop'] -Stop $labels['done'] -Idle @($wait, ($wait + 3)))
+Remove-Item $trace
+Check 'trace: 10 whole frames between the 2nd pass and DONE' ($frames.Count -eq 10) "got $($frames.Count)"
+Check 'trace: every frame does exactly 523 cycles of work' (@($frames | Where-Object { $_.Busy -ne 523 }).Count -eq 0) (($frames | ForEach-Object Busy) -join ', ')
+$field = ($frames | Measure-Object Total -Average).Average
+Check 'trace: a frame lasts one NTSC field, 14,934 cycles' ($field -gt 14900 -and $field -lt 14970) "average $field"
+
 # --- summary ---
 Write-Host ''
 if ($script:failures) { Write-Host "$($script:failures) check(s) failed"; exit 1 }
