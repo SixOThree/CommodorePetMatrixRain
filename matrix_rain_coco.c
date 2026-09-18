@@ -21,6 +21,7 @@
  *     no pixels lit, which shows as black; letters are masked with $3F;
  *     bit 6 highlights instead of bit 7
  *   - rnd_char() now and then picks a green graphics block
+ *   - flicker() keeps changing the green blocks already in the trails
  *   - speeds and columns are masked to 0-31 before the reroll, as
  *     trail lengths already were, so no frame overruns the field
  *   - there is no PET entry point
@@ -54,6 +55,9 @@
 #define SPDSTART     9      /* initial speed range (0 to N-1, lower=faster) */
 #define SPDRESET     5      /* reset speed range (0 to N-1, lower=faster)   */
 #define GRAPHIC     16      /* graphics block chance (0=never, 255=always)  */
+#define BLOCKGLITCH 128     /* chance a green block changes each time the
+                             * sweep visits it, every 4 frames (0=never,
+                             * 255=always)                                  */
 
 /* Speeds and columns are drawn from 0-31, so these cannot exceed 32. */
 #if SPDSTART > 32 || SPDRESET > 32 || NUMDRIPS > 32
@@ -179,18 +183,27 @@ static unsigned char rnd(void)
     return (unsigned char)(seedhi ^ seedlo);
 }
 
+/* A green graphics block with at least one pixel lit: a block with none
+ * would look empty, so it becomes the full block. */
+static unsigned char rnd_block(void)
+{
+    unsigned char ch = (unsigned char)(BLOCK | (rnd() & 0x0f));
+
+    if (ch == BLOCK) {
+        ch = BLOCK_FULL;
+    }
+    return ch;
+}
+
 /* A new rain character: now and then a green graphics block, otherwise
- * a letter, digit or symbol. Never a cell that looks empty: a block with
- * no pixels lit becomes the full block, and a space becomes '!'. */
+ * a letter, digit or symbol. Never a cell that looks empty: a space
+ * becomes '!'. */
 static unsigned char rnd_char(void)
 {
     unsigned char ch;
 
     if (rnd() < GRAPHIC) {
-        ch = (unsigned char)(BLOCK | (rnd() & 0x0f));
-        if (ch == BLOCK) {
-            ch = BLOCK_FULL;
-        }
+        ch = rnd_block();
     } else {
         ch = rnd() & CHARMASK;
         if (ch == CHR_SPACE) {
@@ -360,6 +373,34 @@ static void draw(void)
 }
 
 /* ============================================================
+ * FLICKER - the green blocks in the trails keep changing
+ * ============================================================
+ * Each frame sweeps a quarter of the screen, a different quarter each
+ * time, so every cell is visited every 4 frames. A green block found
+ * there gets a new pattern with chance BLOCKGLITCH. Highlighted (buff)
+ * blocks are heads, which draw() looks after.
+ * ============================================================ */
+
+#define SWEEP_SIZE  128     /* bytes swept per frame: a quarter of the screen */
+
+static unsigned int sweep;  /* where the next sweep starts */
+
+static void flicker(void)
+{
+    unsigned int  i;
+    unsigned int  end = sweep + SWEEP_SIZE;
+    unsigned char v;
+
+    for (i = sweep; i < end; ++i) {
+        v = screen[i];
+        if (v > CHR_EMPTY && v <= BLOCK_FULL && rnd() < BLOCKGLITCH) {
+            screen[i] = rnd_block();
+        }
+    }
+    sweep = (end == SCREEN_SIZE) ? 0 : end;
+}
+
+/* ============================================================
  * Entry point
  * ============================================================ */
 
@@ -408,6 +449,7 @@ int main(void)
     init();
     for (f = 0; f < SIM_FRAMES; ++f) {
         draw();
+        flicker();
     }
     dump();
     return 0;

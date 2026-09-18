@@ -44,6 +44,9 @@ NUMDRIPS equ  28             ; active drops (max 32)
 SPDSTART equ  9              ; initial speed range (0 to N-1, lower=faster)
 SPDRESET equ  5              ; reset speed range (0 to N-1, lower=faster)
 GRAPHIC  equ  16             ; graphics block chance (0=never, 255=always)
+BLOCKGLITCH equ 128          ; chance a green block changes each time the
+                             ; sweep visits it, every 4 frames (0=never,
+                             ; 255=always)
 
 ; Speeds and columns are drawn from 0-31, so these cannot exceed 32.
          IFGT SPDSTART-32
@@ -62,6 +65,7 @@ GRAPHIC  equ  16             ; graphics block chance (0=never, 255=always)
 
 SCREEN   equ  $0400          ; screen RAM
 SCREENEND equ $0600          ; first byte past it
+SWEEPSIZE equ 128            ; bytes FLICKER sweeps a frame: a quarter of it
 COLS     equ  32
 NOREVERSE equ $05E0          ; the bottom row: never highlighted
 
@@ -99,7 +103,8 @@ seedlo   fcb  0              ; random generator state
 seedhi   fcb  0
 headch   fcb  0              ; scratch for RNDHEAD
 frames   fdb  0              ; frames drawn; only test builds use it
-         zmb  11             ; the rest of the 16-byte area
+sweep    fdb  0              ; where FLICKER sweeps next
+         zmb  9              ; the rest of the 16-byte area
 
 ; ============================================================
 ; Initialization
@@ -137,6 +142,9 @@ clrloop  std  ,x++
          lda  #$1C
          sta  <seedhi
 
+         ldx  #SCREEN        ; FLICKER starts at the top
+         stx  <sweep
+
          ldu  #drops
          ldy  #rainhis
          clrb                ; B = drop number = its starting column
@@ -171,6 +179,7 @@ mainloop
 waitsync lda  PIA0CRB        ; and wait for the next one
          bpl  waitsync
 synced   jsr  draw           ; build-coco.ps1 times frames from here
+         jsr  flicker
          bra  mainloop
 
          IFDEF TESTFRAMES
@@ -293,6 +302,38 @@ advance  leau RECSIZE,u
          rts
 
 ; ============================================================
+; FLICKER - the green blocks in the trails keep changing
+; ============================================================
+; Each frame sweeps a quarter of the screen, a different quarter each
+; time, so every cell is visited every 4 frames. A green block found
+; there gets a new pattern with chance BLOCKGLITCH. Highlighted (buff)
+; blocks are heads, which DRAW looks after. B counts the cells.
+; ============================================================
+
+flicker  ldx  <sweep
+         ldb  #SWEEPSIZE
+flickcell
+         lda  ,x+
+         cmpa #EMPTY         ; letters and empty cells: $80 or below
+         bls  flicknext
+         cmpa #BLOCK+PIXELS  ; highlighted blocks: above $8F
+         bhi  flicknext
+         jsr  random
+         cmpa #BLOCKGLITCH
+         bhs  flicknext
+         jsr  rndblock
+         sta  -1,x
+flicknext
+         decb
+         bne  flickcell
+         cmpx #SCREENEND     ; after the last quarter, back to the top
+         bne  flicksave
+         ldx  #SCREEN
+flicksave
+         stx  <sweep
+         rts
+
+; ============================================================
 ; RNDHEAD - a head character, sometimes highlighted. Out: A.
 ; ============================================================
 
@@ -314,7 +355,9 @@ rndheadx rts
 rndchar  jsr  random
          cmpa #GRAPHIC
          bhs  letter
-         jsr  random
+                             ; fall into RNDBLOCK
+; RNDBLOCK - a green graphics block with at least one pixel lit. Out: A.
+rndblock jsr  random
          anda #PIXELS
          bne  block
          lda  #FULL          ; no pixels lit would look empty

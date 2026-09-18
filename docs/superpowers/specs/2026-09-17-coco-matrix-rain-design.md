@@ -33,6 +33,13 @@ lowercase shows on a CoCo 1/2. Codes `$80`–`$FF` are semigraphics blocks: a
 - **Dimming the old lead** clears bit 6 only (`AND #$BF`), which returns a
   letter to green on dark green and a buff block to green. Masking with `$3F`
   would be wrong: it would turn a block into a letter.
+- **Green blocks in the trails flicker.** (Added after the first look in
+  XRoar.) Each frame, `FLICKER` sweeps a quarter of the screen, a different
+  quarter each time, so every cell is visited every 4 frames. A green block
+  it finds gets a new random pattern, still green, with chance `BLOCKGLITCH`
+  (128: about 7 changes a second). Letters and highlighted blocks are left
+  alone. It costs about 2,700 cycles a frame; the worst frame measured over
+  a minute left about 3,100 cycles spare.
 
 | | PET 8032 | CoCo 1/2 |
 |---|---|---|
@@ -71,6 +78,7 @@ Starting settings, to be tuned by eye in XRoar:
 | `SPDSTART` / `SPDRESET` | 9 / 5 | 9 / 5 |
 | `GLITCH` / `REVERSE` / `NEWCHAR` | 64 / 64 / 51 | 64 / 64 / 51 |
 | `GRAPHIC` (block chance) | none | 16, about 6% of new characters |
+| `BLOCKGLITCH` (block flicker) | none | 128, half the sweep's visits |
 
 Trail lengths are still drawn as `(random & $1F) + TRAILMIN`, rerolled while
 above `TRAILMAX`, and the glitch row as `random & $0F`. Picking a new character
