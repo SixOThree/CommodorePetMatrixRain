@@ -1626,7 +1626,7 @@ newspeed jsr  random
 
 advance  leau RECSIZE,u
          cmpu #drops+NUMDRIPS*RECSIZE
-         bne  nextdrop
+         lbne nextdrop       ; long branch: DRAW is over 128 bytes
          rts
 
 ; ============================================================
