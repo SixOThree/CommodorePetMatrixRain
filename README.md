@@ -25,7 +25,9 @@ draws the same sequence of characters as the assembly.
 ```powershell
 .\build.ps1            # writes matrix_rain_8032_c.prg
 .\build.ps1 -Run       # and launches it in VICE xpet
-.\build.ps1 -Test      # runs it under cc65's 6502 simulator instead
+.\build.ps1 -Test      # runs it under cc65's 6502 simulator and checks
+                       # it against the assembly
+.\tools\profile.ps1    # shows which routines a frame's cycles go to
 ```
 
 Or by hand:
@@ -35,8 +37,13 @@ cl65 -t pet -Oi -Cl -o matrix_rain_8032_c.prg matrix_rain_8032.c
 ```
 
 It draws the identical screen. After 400 frames all 2048 screen bytes match
-what the assembly produces, checked by running the shipped `.prg` and the C
-build side by side under cc65's 6502 simulator.
+what the assembly produces. `-Test` checks this on every run: it loads the
+shipped `matrix_rain_8032_noclock_v8.prg` into the same simulator
+(`tools/asm_harness.c`), runs both versions from the same seed, and fails
+if a single byte of screen RAM differs. It compares against that `.prg`,
+not the `.asm` source, so rebuild the `.prg` after editing the assembly.
+Changing a configuration value in only one of the two versions will make
+it fail too, which is the point.
 
 It is slower. A frame costs about 31,400 cycles against the assembly's
 18,450 and a 16,667-cycle retrace budget, so the rain falls at roughly 32

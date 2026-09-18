@@ -36,7 +36,7 @@
  * ------------------------------------------------------------
  * Adjust these to change the effect's appearance. */
 
-#define GLITCH      64      /* trail glitch frequency (0=off, 255=constant) */
+#define GLITCH      64    /* trail glitch frequency (0=off, 255=constant) */
 #define TRAILMIN    10      /* minimum trail length (rows)                  */
 #define TRAILMAX    24      /* maximum trail length (rows)                  */
 #define REVERSE     64      /* reverse video chance (0=never, 255=always)   */
@@ -369,9 +369,20 @@ static void draw(void)
 #endif
 
 /* Print the screen as text so the shape of the rain can be checked
- * without a display: '.' empty, '*' normal video, '#' reverse video. */
+ * without a display: '.' empty, '*' normal video, '#' reverse video.
+ *
+ * Built with SIM_RAW, print every byte of screen RAM in hex instead,
+ * one per line. tools/asm_harness.c prints the assembly's screen the
+ * same way, and build.ps1 -Test requires the two to match. */
 static void dump(void)
 {
+#ifdef SIM_RAW
+    unsigned int r;
+
+    for (r = 0; r < SCREEN_SIZE; ++r) {
+        printf("%02x\n", screen[r]);
+    }
+#else
     unsigned int  r;
     unsigned int  c;
     unsigned char v;
@@ -383,6 +394,7 @@ static void dump(void)
         }
         putchar('\n');
     }
+#endif
 }
 
 int main(void)

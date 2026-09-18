@@ -29,8 +29,24 @@ The .prg file includes a BASIC stub (`10 SYS 1040`) that auto-starts the machine
 .\build.ps1          # cl65 -t pet -Oi -Cl -o matrix_rain_8032_c.prg matrix_rain_8032.c
 .\build.ps1 -Run     # build, then launch in VICE xpet
 .\build.ps1 -Test    # build for cc65's sim6502 target, dump the screen as
-                     # text and report measured cycles per frame
+                     # text, fail unless all 2048 screen bytes match the
+                     # assembly's, and report cycles per frame for both
+.\tools\profile.ps1  # cycles per frame by routine, from a sim65 trace
 ```
+
+`-Test` is the regression test for the C port. `tools/asm_harness.c` loads
+the shipped `matrix_rain_8032_noclock_v8.prg` at $0401 under sim65 (linked
+with `tools/sim_asm.cfg`, which moves the harness up to $0800), skips the
+KERNAL screen clear and the retrace loop, and calls the original init and
+DRAW directly. It checks the bytes at $0410 and $0457 first, so a rebuilt
+`.prg` with a different layout fails loudly instead of running the wrong
+code. Both sides print screen RAM in hex when built with `-DSIM_RAW`.
+
+`profile.ps1` drops `static` from a copy of the source so the functions get
+labels, then refuses to report unless that copy runs to exactly the same
+cycle count as the real source. Code layout matters here: moving a routine
+changes which branches and indexed loads cross a page boundary, and each
+crossing costs a cycle.
 
 `-Cl` gives locals static storage. Nothing recurses, and cc65's software
 stack is slow, so this is worth several percent. `-Oi` beats plain `-O`

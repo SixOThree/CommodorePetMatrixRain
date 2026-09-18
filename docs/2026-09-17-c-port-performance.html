@@ -781,14 +781,30 @@
 <section id="reproduce">
   <h2>Reproducing this</h2>
 
-  <pre><code>.\build.ps1 -Test</code></pre>
+  <pre><code>.\build.ps1 -Test
+.\tools\profile.ps1</code></pre>
 
   <p>
-    That builds the C source for cc65's <code>sim6502</code> target, prints the screen as
-    text and reports the measured cost of a frame. The equivalence check against the
-    assembly and the per-function profiler were built for this investigation and live
-    outside the repository; say the word and they can be added under a tools directory so
-    the byte-for-byte comparison runs as a regression test.
+    <code>-Test</code> builds the C source for cc65's <code>sim6502</code> target and prints
+    the screen as text. It then loads the shipped assembly <code>.prg</code> into the same
+    simulator, runs both for 400 frames, and fails unless all 2048 bytes of screen RAM
+    match. Last, it reports the cost of a frame for both versions. The byte-for-byte
+    comparison used throughout this investigation now runs as a regression test on every
+    <code>-Test</code>.
+  </p>
+
+  <p>
+    <code>profile.ps1</code> produces the per-function table above. Its figures for the
+    current code differ from the table's &ldquo;after&rdquo; column by a few cycles
+    (<code>draw</code> at 17,722 rather than 17,715) for two reasons. The profiler used
+    during the investigation traced a copy of the source that was laid out three bytes
+    differently from the real build, which moved a few page crossings. The committed one
+    traces a copy that runs to exactly the real build's cycle count, and it refuses to
+    report if the two ever disagree. The old profiler also lumped every local label named
+    <code>@L1</code> into one row. The committed one charges those cycles to the routines
+    they belong to, which moves about 800 cycles into <code>pushax</code>. Neither change
+    touches a conclusion here: the cc65 helpers still total about 3,100 cycles and the
+    random routines 7,670.
   </p>
 
   <h3>Files</h3>
@@ -796,6 +812,8 @@
     <li><code>C:\OneDrive\Vintage Computing Development\CommodorePetMatrixRain\matrix_rain_8032.c</code></li>
     <li><code>C:\OneDrive\Vintage Computing Development\CommodorePetMatrixRain\matrix_rain_8032_c.prg</code></li>
     <li><code>C:\OneDrive\Vintage Computing Development\CommodorePetMatrixRain\build.ps1</code></li>
+    <li><code>C:\OneDrive\Vintage Computing Development\CommodorePetMatrixRain\tools\asm_harness.c</code></li>
+    <li><code>C:\OneDrive\Vintage Computing Development\CommodorePetMatrixRain\tools\profile.ps1</code></li>
   </ul>
 </section>
 
