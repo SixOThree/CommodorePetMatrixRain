@@ -13,29 +13,45 @@ way to stop the program other than reset.
 
 ## How it looks and behaves
 
-Green characters on a black screen. The CoCo 1/2 video chip (the MC6847) has
-two renderings of each of its 64 characters: dark on a green block, which is
-normal CoCo text, and green on black, which is how lowercase shows on a CoCo
-1/2. The rain uses green on black throughout, so an empty screen is black. A
-highlighted lead character uses the other rendering and shows as a green block
-with a dark character in it, the counterpart of the PET's reverse-video leads.
+Green rain on a black screen. The CoCo 1/2 video chip (the MC6847) has two
+renderings of each of its 64 text characters: dark on a bright green cell,
+which is normal CoCo text, and bright green on a dark green cell, which is how
+lowercase shows on a CoCo 1/2. Codes `$80`–`$FF` are semigraphics blocks: a
+2×2 pattern of pixels in one of eight colours on true black, with green at
+`$80`–`$8F` and buff (near white) at `$C0`–`$CF`.
+
+- **Empty cells are `$80`**, the green block with no pixels lit, so the screen
+  is true black and matches the black border of text mode.
+- **Letters** use the bright-green-on-dark-green rendering. Each one sits on a
+  faint dark green cell, which reads as a slight glow around the drops.
+- **Green blocks appear sparingly.** When a new character is picked, a
+  `GRAPHIC` chance (0 = never, 255 = always, like `GLITCH` and `REVERSE`)
+  picks a green block instead of a letter.
+- **A highlighted lead** has bit 6 set. A letter becomes dark on a bright
+  green cell, the counterpart of the PET's reverse-video leads. A green block
+  becomes a buff block, close to the film's bright lead glyph.
+- **Dimming the old lead** clears bit 6 only (`AND #$BF`), which returns a
+  letter to green on dark green and a buff block to green. Masking with `$3F`
+  would be wrong: it would turn a block into a letter.
 
 | | PET 8032 | CoCo 1/2 |
 |---|---|---|
-| empty cell | `$20` | `$20` (black) |
-| rain character | random `& $7F` | random `& $3F` |
-| a random space becomes | `$21` `!` | `$21` `!` |
+| empty cell | `$20` | `$80` (black) |
+| new character | random `& $7F` | if random `< GRAPHIC`: `$80` \| (random `& $0F`), else random `& $3F` |
+| fix-up of a blank pick | space `$20` becomes `!` `$21` | letter `$20` becomes `$21`; block `$80` becomes `$8F` |
 | highlighted lead | set bit 7 | set bit 6 |
 | dimming the old lead | clear bit 7 | clear bit 6 |
+| "cell is empty" test | `== $20` | `== $80` |
 
-The CoCo has uppercase letters, digits and punctuation only.
+The text characters are uppercase letters, digits and punctuation only.
 
 The algorithm is unchanged: the same 16-bit random number generator with tap
 `$B4` and seed `21`/`$1C`, and the same per-drop steps (refresh or replace the
 lead character, dim the one above it, now and then swap one trail character,
 then either wait, or erase the tail and move down, or recycle the drop once its
-tail has left the screen). Only the geometry, the settings and the character
-codes change. Two geometry changes are deliberate:
+tail has left the screen). Only the geometry, the settings, the character codes
+and the graphics-block choice in the character picker change. Two geometry
+changes are deliberate:
 
 - **Bounds stop at the screen edge.** The PET checks the full 2K of screen RAM,
   48 bytes more than it displays, and drops pass through those bytes on the way
@@ -54,10 +70,13 @@ Starting settings, to be tuned by eye in XRoar:
 | `TRAILMIN` / `TRAILMAX` | 10 / 24 rows | 6 / 14 rows |
 | `SPDSTART` / `SPDRESET` | 9 / 5 | 9 / 5 |
 | `GLITCH` / `REVERSE` / `NEWCHAR` | 64 / 64 / 51 | 64 / 64 / 51 |
+| `GRAPHIC` (block chance) | none | 16, about 6% of new characters |
 
 Trail lengths are still drawn as `(random & $1F) + TRAILMIN`, rerolled while
-above `TRAILMAX`, and the glitch row as `random & $0F`, so the random number
-sequence is consumed the same way as on the PET.
+above `TRAILMAX`, and the glitch row as `random & $0F`. Picking a new character
+takes one more random number than on the PET (the `GRAPHIC` roll), so the
+CoCo's sequence of characters is its own, which is fine: the CoCo is checked
+against its own reference model, not against the PET.
 
 A CoCo 1/2 runs at 0.894886 MHz. An NTSC field is 262 lines of 57 cycles,
 14,934 cycles at 60 Hz. A frame of drawing is expected to take about half of
@@ -83,8 +102,8 @@ under 1K. The screen is `$0400`–`$05FF`.
    graphics program: clear bits 3–7 of `$FF22` (the video chip's mode lines),
    and set the SAM (the chip that feeds screen memory to the video chip) to
    text mode with display offset `$0400`.
-5. Fill the screen with `$20`, seed the random number generator and set up the
-   drops, as the PET does.
+5. Fill the screen with `$80` (black), seed the random number generator and
+   set up the drops, as the PET does.
 
 **Frame timing.** The field sync signal from the video chip sets bit 7 of
 `$FF03` on PIA 0. The main loop waits for that bit, clears it by reading
@@ -117,12 +136,12 @@ the first 32 entries of the PET's.
 ## Reference model
 
 `matrix_rain_coco.c` is a copy of `matrix_rain_8032.c` with only the screen
-geometry, the settings and the character codes changed. Every line of logic
-stays as it is, so that:
+geometry, the settings, the character codes and the graphics-block choice in
+`rnd_char()` changed. Every other line of logic stays as it is, so that:
 
 - a plain diff between the two C files lists exactly what the CoCo changed, and
-- the logic is the version already proven byte for byte against the PET
-  assembly.
+- apart from that one addition, the logic is the version already proven byte
+  for byte against the PET assembly.
 
 It builds only for cc65's sim65 simulator, as the test reference; it is not
 built for the CoCo. With `-DSIM_RAW` it prints the 512 screen bytes it expects
@@ -197,8 +216,9 @@ sectors 3–11) and the file stored in 9-sector granules.
 
 ## To confirm early in implementation
 
-- The character renderings: that `$00`–`$3F` show green on black and
-  `$40`–`$7F` dark on green in XRoar, on both `coco2bus` and `cocous`.
+- The character renderings in XRoar, on both `coco2bus` and `cocous`:
+  `$00`–`$3F` bright green on dark green, `$40`–`$7F` dark on bright green,
+  `$80`–`$8F` green blocks on black, `$C0`–`$CF` buff blocks on black.
 - That XRoar accepts two traps in one run with `-trap-range`; if not, run it
   twice, which gives the same result because the program is deterministic.
 - XRoar's snapshot chunk layout, its trace line format, and how `-run` starts a
