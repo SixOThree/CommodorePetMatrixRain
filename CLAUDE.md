@@ -65,6 +65,79 @@ The C source compiles for two targets. Under `__SIM6502__` it swaps screen
 RAM for an array and the retrace wait for a frame counter, which is how
 `-Test` checks the logic without a display.
 
+### CoCo 1/2 version
+
+`matrix_rain_coco.asm` is a 6809 port for the TRS-80 Color Computer 1/2,
+assembled with LWTOOLS and tested in XRoar:
+
+```powershell
+.\build-coco.ps1              # lwasm --decb, then the .cas and .dsk images
+.\build-coco.ps1 -Run         # open the .bin in XRoar
+.\build-coco.ps1 -Test        # screen vs matrix_rain_coco.c, RAM, images, speed
+.\tools\test_coco_tools.ps1   # tests for the image writers and XRoar helpers
+```
+
+Tools on this machine: LWTOOLS 4.25 in
+`C:\Development\_VintageDevelopment\lwtools\bin`, built from source with
+Visual Studio; XRoar 1.9 in `C:\Program Files\6809.org.uk\XRoar 1.9`; ROMs
+in `%USERPROFILE%\Documents\XRoar\ROMS`, which has no Disk BASIC ROM, so
+`-Test` skips the disk image.
+
+`matrix_rain_coco.c` is the test reference: a copy of the PET C port with
+the CoCo's geometry, settings, character codes, graphics blocks, block
+flicker and masked speed/column rolls. It builds only for sim65. Any change
+to the drawing or the settings goes into both it and the `.asm`, in the same
+order of random number calls, and `-Test` fails until they agree. Screen
+codes: `$80` is an empty (black) cell, letters are `$00`-`$3F`, bit 6
+highlights, green blocks are `$81`-`$8F`.
+
+A frame must fit in 14,934 cycles (one NTSC field). `-Test` reports the
+cost of frames 101-110; it is about 9,000, peaking near 9,800.
+
+XRoar 1.9 behaviours the tests depend on:
+- A `\` in an option value is an escape. Pass forward-slash paths
+  (`ConvertTo-XRoarPath` in `tools/xroar.ps1`).
+- A trap snapshot is written about 20 frames after its trap fires. The tests
+  snapshot test builds (`lwasm -D TESTFRAMES=n`) that park at `testdone`.
+- `-trap-trace` starts on the exact instruction; `-trap-no-trace` does
+  nothing. A `pc=` trap on the entry address does not fire under `-run`.
+- `-type` needs `\r` for Enter. A `.bin` given to `-load` is wiped when BASIC
+  starts; use `-run`. `-ui null` runs with no window.
+- Trace `dt=` is sixteenths of a CPU cycle. Time frames from just after the
+  sync wait (the `synced` label), or a frame's total is off by the
+  difference between consecutive frames' work.
+
+### CoCo 3 version
+
+`matrix_rain_coco3.asm` is the CoCo 3 port: GIME attribute text at
+1.79 MHz, `-D COMPOSITE` for the 40-column composite build (default 80
+columns, RGB). `matrix_rain_coco3.c` is its reference, with the same
+switch; change both together.
+
+```powershell
+.\build-coco3.ps1 [-Run [-Composite]] [-Test]
+```
+
+- The screen is at `$2000`, which is physical `$72000` in BASIC's memory
+  map. It has 2 bytes a cell: the character, then an attribute. The
+  attribute's foreground is in bits 5–3 (palette slots 8–15) and its
+  background in bits 2–0 (slots 0–7).
+- The GIME values come from BASIC's `WIDTH 80`/`40`: `$FF90`=`$4C`,
+  `$FF98`=`$03`, `$FF99`=`$15`/`$05`, and `$FF9D`/`$FF9E`=`$E4`/`$00`.
+  These registers are write-only.
+- An empty cell is a space in `DARK`, not `HEAD`. Otherwise a glitch into
+  a gap left by another drop's tail draws a stray white character.
+- The RGB build runs 65 drops. At 70 it misses the field a few times a
+  minute, even with the inline random step (`RAND`) and the four-cell
+  flicker loop. `-Test` samples only 10 frames, so check a longer run
+  before raising `NUMDRIPS` or adding work per drop.
+- Test on `-machine coco3 -ram 512`. A snapshot holds RAM in physical
+  order, with logical `$0000` at `$70000`. A field is 29,982 cycles, and
+  trace `dt` is eighths of a cycle (`Measure-XRoarTrace -TicksPerCycle 8`).
+- On XRoar's true composite modes (`-tv-input cmp-br`/`cmp-rb`), 80
+  columns turns to coloured dots. `cmp` is really S-video.
+- `lwasm -D` values are decimal only.
+
 ## Architecture
 
 ### Memory Layout

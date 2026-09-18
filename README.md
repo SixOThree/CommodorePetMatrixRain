@@ -57,6 +57,83 @@ unsigned wraparound so one comparison covers both ends. Every one of those
 is commented in the source with what it saves. The assembly version remains
 the one to use on real hardware.
 
+## The Color Computer version
+
+`matrix_rain_coco.asm` is the effect on the TRS-80 Color Computer 1 and 2,
+in 6809 assembly. It uses the CoCo's 32×16 text screen: bright green letters
+on a black screen, with the odd green graphics block that keeps flickering
+through new patterns as its trail falls. A highlighted lead shows as a dark
+letter on a bright green cell, and a highlighted block turns buff.
+
+Load it from disk with `LOADM"MATRIX":EXEC`, or from tape with
+`CLOADM"MATRIX":EXEC`. It needs 16K and runs until you press reset.
+
+```powershell
+.\build-coco.ps1         # writes matrix_rain_coco.bin, .cas and .dsk
+.\build-coco.ps1 -Run    # and opens the .bin in XRoar
+.\build-coco.ps1 -Test   # checks it in XRoar against matrix_rain_coco.c
+```
+
+Building needs [LWTOOLS](http://www.lwtools.ca/). Running and testing need
+[XRoar](https://www.6809.org.uk/xroar/) with CoCo ROMs, and cc65 for the
+reference model the test compares against.
+
+The algorithm is the PET's, with the same random number generator, seed and
+steps for each drop. Two things differ. Speeds and columns are drawn from
+0 to 31 before the reroll, as trail lengths always were, because rerolling a
+whole byte until it fell under 5 made about one frame in 80 miss the 60 Hz
+deadline. And each frame sweeps a quarter of the screen, giving the green
+blocks it finds a chance at a new pattern.
+
+A frame takes at most about two thirds of the time between screen refreshes,
+so it holds 60 fps. The settings are tuned for the smaller screen and sit at
+the top of both `matrix_rain_coco.asm` and `matrix_rain_coco.c`, which have
+to agree:
+
+| Variable | CoCo default |
+|----------|--------------|
+| GLITCH   | 64 |
+| TRAILMIN | 6 |
+| TRAILMAX | 14 |
+| REVERSE  | 64 |
+| NEWCHAR  | 51 |
+| NUMDRIPS | 28 (max 32) |
+| SPDSTART | 9 (max 32) |
+| SPDRESET | 5 (max 32) |
+| GRAPHIC  | 16: the chance, out of 256, that a new character is a graphics block |
+| BLOCKGLITCH | 128: the chance, out of 256, that a block changes each time the sweep reaches it, every 4 frames |
+
+## The Color Computer 3 version
+
+`matrix_rain_coco3.asm` is the effect in colour on the TRS-80 Color
+Computer 3, using its hardware text mode, where every character has its
+own colours. Each trail fades from a white head through bright green and
+green to dark green, and accented letters flicker through the trails in
+place of the CoCo 1/2's graphics blocks. It runs the CPU at 1.79 MHz.
+
+There are two builds:
+
+- `MATRIX3`: 80×24 with 65 drops, for an RGB monitor such as the CM-8.
+  The PET's 70 drops miss the 60 Hz frame now and then.
+- `MATRIX3C`: 40×24 with 40 drops, for a TV or composite monitor.
+  A composite colour signal can't carry 80 columns.
+
+Load one with `LOADM"MATRIX3":EXEC` (the disk holds both) or
+`CLOADM"MATRIX3":EXEC` from its tape image. It runs until you press
+reset.
+
+```powershell
+.\build-coco3.ps1                  # writes both builds, their tapes and the disk
+.\build-coco3.ps1 -Run             # opens the RGB build in XRoar
+.\build-coco3.ps1 -Run -Composite  # opens the composite build
+.\build-coco3.ps1 -Test            # checks both in XRoar against matrix_rain_coco3.c
+```
+
+The settings sit at the top of `matrix_rain_coco3.asm` and
+`matrix_rain_coco3.c`, one block per build, and the two files have to
+agree. They start from the PET 8032's (RGB) and 4032's (composite), with
+trails capped at 23 rows.
+
 ## Running
 
 Load the .prg file on a Commodore PET 8032 or emulator (such as [VICE xpet](https://vice-emu.sourceforge.io/)):
