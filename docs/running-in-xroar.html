@@ -232,7 +232,9 @@
 <section id="files">
   <h2>Which file</h2>
   <p>Each version comes three ways: a <code class="nw">.bin</code> program file, the simplest to
-    run; a <code class="nw">.cas</code> cassette tape image; and a <code class="nw">.dsk</code> disk image.</p>
+    run; a <code class="nw">.cas</code> cassette tape image; and a <code class="nw">.dsk</code> disk image. The
+    CoCo 1/2 files are in the repository's <code class="nw">coco</code> folder, and the CoCo 3 files in
+    <code class="nw">coco3</code>.</p>
   <div class="table-wrap">
     <table>
       <thead>
@@ -344,7 +346,8 @@ LOADM"MATRIX3C":EXEC    CoCo 3, composite, from matrix_rain_coco3.dsk</pre></div
 <section id="command">
   <h2>Run it from a command line</h2>
   <p>One line picks the machine and TV input, loads the program and runs it. From the
-    folder holding the files, with <code class="nw">xroar.exe</code> on your path, or with its full
+    folder holding the file, <code class="nw">coco</code> for the first line and <code class="nw">coco3</code> for
+    the other two, with <code class="nw">xroar.exe</code> on your path, or with its full
     path typed in:</p>
   <div class="code"><pre>xroar -machine coco2bus -run matrix_rain_coco.bin
 xroar -machine coco3 -tv-input rgb -run matrix_rain_coco3.bin

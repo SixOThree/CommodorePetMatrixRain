@@ -1,7 +1,7 @@
 /* ============================================================
  * Runs the assembly version under cc65's 6502 simulator
  * ============================================================
- * build.ps1 -Test uses this to check the C port against the original
+ * pet\build.ps1 -Test uses this to check the C port against the original
  * and to time both on the same clock.
  *
  * The shipped .prg is copied to $0401, where its absolute addressing
@@ -10,9 +10,9 @@
  * would wait forever on a VIA that does not exist. Init and DRAW are
  * the original code, called directly.
  *
- * Build (from the repository root):
- *   cl65 -t sim6502 -C tools/sim_asm.cfg -o harness.bin
- *        tools/asm_harness.c tools/asm_blob.s
+ * Build (from the pet folder, where the .prg is):
+ *   cl65 -t sim6502 -C ../tools/sim_asm.cfg -o harness.bin
+ *        ../tools/asm_harness.c ../tools/asm_blob.s
  *
  * SIM_FRAMES sets how many frames to draw. SIM_RAW prints every byte
  * of screen RAM afterwards in hex, one per line, in the same format as

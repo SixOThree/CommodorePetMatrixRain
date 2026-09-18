@@ -209,7 +209,7 @@
 
 <section id="short">
   <h2>The short version</h2>
-  <p>Run these from the repository folder, in PowerShell 7.</p>
+  <p>Run these in PowerShell 7, from the repository's <code class="nw">pet</code> folder.</p>
   <ol class="steps">
     <li>
       <p>Change a setting in <code>matrix_rain_8032_noclock_v8.asm</code>, and the same
@@ -236,6 +236,9 @@
 
 <section id="files">
   <h2>The files</h2>
+  <p>Everything for the PET is in the repository's <code class="nw">pet</code> folder, and this
+    guide's commands run from there. <code class="nw">build.ps1</code> finds its files wherever you
+    run it from, so <code class="nw">.\pet\build.ps1</code> from the repository folder works too.</p>
   <div class="table-wrap">
     <table>
       <thead>
@@ -370,7 +373,7 @@ SPDRESET !byte 5               ; reset speed range (0 to N-1, lower=faster)</pre
 
 <section id="asm">
   <h2>Build the assembly</h2>
-  <p>With ACME, from the repository folder:</p>
+  <p>With ACME, from the <code class="nw">pet</code> folder:</p>
   <div class="code"><pre>acme -f cbm -o matrix_rain_8032_noclock_v8.prg matrix_rain_8032_noclock_v8.asm
 acme -f cbm -o matrix_rain_4032.prg matrix_rain_4032.asm</pre></div>
   <p><code class="nw">-f cbm</code> puts the load address, <code class="nw">$0401</code>, in the first two bytes
@@ -440,7 +443,7 @@ Assembly:   18,453 cycles, so the C version takes 1.70x as long</pre></div>
       running the test, or you'll be testing the old program.</p>
   </div>
   <p>To see which parts of the C version a frame's cycles go to, run
-    <code class="nw">.\tools\profile.ps1</code>.</p>
+    <code class="nw">..\tools\profile.ps1</code>.</p>
   <p>The 4032 version has no automated test. Assemble it and watch it in VICE on a
     PET 4032.</p>
 </section>

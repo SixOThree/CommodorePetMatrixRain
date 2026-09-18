@@ -6,9 +6,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a 6502 assembly language project that creates a Matrix-style falling character animation for the Commodore PET 8032 (80-column display). Original concept from Petopia demo by Milasoft.
 
+## Layout
+
+One folder per machine, each holding its source, reference C, `build.ps1`
+and the committed files it builds: `pet/` (8032 and 4032 assembly, the C
+port), `coco/` (CoCo 1/2), `coco3/` (CoCo 3, both builds). `tools/` holds
+the test harnesses, image writers and profiler; `docs/` the guides. Scripts
+find their files from `$PSScriptRoot` and leave the caller's location as it
+was, so they run from anywhere: the README runs them from the root
+(`.\pet\build.ps1 -Test`), the guides from inside each machine's folder
+(`.\build.ps1 -Test`).
+
 ## Build Commands
 
-Build with ACME cross-assembler:
+Build with ACME cross-assembler, from `pet/`:
 ```bash
 acme -f cbm -o matrix_rain_8032_noclock_v8.prg matrix_rain_8032_noclock_v8.asm
 ```
@@ -34,16 +45,19 @@ The .prg file includes a BASIC stub (`10 SYS 1040`) that auto-starts the machine
 
 ### C version
 
-`matrix_rain_8032.c` is a port of the 8032 assembly, built with cc65:
+`pet/matrix_rain_8032.c` is a port of the 8032 assembly, built with cc65:
 
 ```powershell
-.\build.ps1          # cl65 -t pet -Oi -Cl -o matrix_rain_8032_c.prg matrix_rain_8032.c
-.\build.ps1 -Run     # build, then launch in VICE xpet
-.\build.ps1 -Test    # build for cc65's sim6502 target, dump the screen as
-                     # text, fail unless all 2048 screen bytes match the
-                     # assembly's, and report cycles per frame for both
-.\tools\profile.ps1  # cycles per frame by routine, from a sim65 trace
+.\pet\build.ps1       # cl65 -t pet -Oi -Cl -o matrix_rain_8032_c.prg matrix_rain_8032.c
+.\pet\build.ps1 -Run  # build, then launch in VICE xpet
+.\pet\build.ps1 -Test # build for cc65's sim6502 target, dump the screen as
+                      # text, fail unless all 2048 screen bytes match the
+                      # assembly's, and report cycles per frame for both
+.\tools\profile.ps1   # cycles per frame by routine, from a sim65 trace
 ```
+
+`pet\build.ps1` runs cl65 from inside `pet/`, because `tools/asm_blob.s`
+includes the 8032 `.prg` by a path relative to the folder cl65 runs in.
 
 `-Test` is the regression test for the C port. `tools/asm_harness.c` loads
 the shipped `matrix_rain_8032_noclock_v8.prg` at $0401 under sim65 (linked
@@ -78,13 +92,13 @@ RAM for an array and the retrace wait for a frame counter, which is how
 
 ### CoCo 1/2 version
 
-`matrix_rain_coco.asm` is a 6809 port for the TRS-80 Color Computer 1/2,
+`coco/matrix_rain_coco.asm` is a 6809 port for the TRS-80 Color Computer 1/2,
 assembled with LWTOOLS and tested in XRoar:
 
 ```powershell
-.\build-coco.ps1              # lwasm --decb, then the .cas and .dsk images
-.\build-coco.ps1 -Run         # open the .bin in XRoar
-.\build-coco.ps1 -Test        # screen vs matrix_rain_coco.c, RAM, images, speed
+.\coco\build.ps1              # lwasm --decb, then the .cas and .dsk images
+.\coco\build.ps1 -Run         # open the .bin in XRoar
+.\coco\build.ps1 -Test        # screen vs matrix_rain_coco.c, RAM, images, speed
 .\tools\test_coco_tools.ps1   # tests for the image writers and XRoar helpers
 ```
 
@@ -120,13 +134,13 @@ XRoar 1.9 behaviours the tests depend on:
 
 ### CoCo 3 version
 
-`matrix_rain_coco3.asm` is the CoCo 3 port: GIME attribute text at
+`coco3/matrix_rain_coco3.asm` is the CoCo 3 port: GIME attribute text at
 1.79 MHz, `-D COMPOSITE` for the 40-column composite build (default 80
 columns, RGB). `matrix_rain_coco3.c` is its reference, with the same
 switch; change both together.
 
 ```powershell
-.\build-coco3.ps1 [-Run [-Composite]] [-Test]
+.\coco3\build.ps1 [-Run [-Composite]] [-Test]
 ```
 
 - The screen is at `$2000`, which is physical `$72000` in BASIC's memory

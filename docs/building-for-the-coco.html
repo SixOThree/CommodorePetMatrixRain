@@ -208,21 +208,21 @@
 
 <section id="short">
   <h2>The short version</h2>
-  <p>Run these from the repository folder, in PowerShell 7. The CoCo 1/2 version uses
-    <code class="nw">build-coco.ps1</code>; the CoCo 3 version uses <code class="nw">build-coco3.ps1</code> the
-    same way.</p>
+  <p>Run these in PowerShell 7, from the repository's <code class="nw">coco</code> folder for the
+    CoCo 1/2 version, or its <code class="nw">coco3</code> folder for the CoCo 3. The commands are the
+    same in both.</p>
   <ol class="steps">
     <li>
-      <p>Change a setting in <code class="nw">matrix_rain_coco.asm</code>, and the same setting in
-        <code class="nw">matrix_rain_coco.c</code>. See <a href="#settings">Change the settings</a>.</p>
+      <p>Change a setting in the <code class="nw">.asm</code> file, and the same setting in the
+        <code class="nw">.c</code> file beside it. See <a href="#settings">Change the settings</a>.</p>
     </li>
     <li>
       <p>Build everything and test it:</p>
-      <div class="code"><pre>.\build-coco.ps1 -Test</pre></div>
+      <div class="code"><pre>.\build.ps1 -Test</pre></div>
     </li>
     <li>
       <p>Watch it run:</p>
-      <div class="code"><pre>.\build-coco.ps1 -Run</pre></div>
+      <div class="code"><pre>.\build.ps1 -Run</pre></div>
     </li>
     <li>
       <p>Commit the sources with the rebuilt <code class="nw">.bin</code>, <code class="nw">.cas</code> and
@@ -233,6 +233,9 @@
 
 <section id="files">
   <h2>The files</h2>
+  <p>The CoCo 1/2 files are in the repository's <code class="nw">coco</code> folder and the CoCo 3
+    files in <code class="nw">coco3</code>. Each folder has its own <code class="nw">build.ps1</code>, which finds
+    its files wherever you run it from.</p>
   <div class="table-wrap">
     <table>
       <thead>
@@ -241,14 +244,14 @@
       <tbody>
         <tr>
           <td><code class="nw">matrix_rain_coco.asm</code><br>CoCo 1/2</td>
-          <td><code class="nw">build-coco.ps1</code></td>
+          <td><code class="nw">coco\build.ps1</code></td>
           <td><code class="nw">matrix_rain_coco.bin</code>, the program<br>
             <code class="nw">matrix_rain_coco.cas</code>, a tape holding it as <code class="nw">MATRIX</code><br>
             <code class="nw">matrix_rain_coco.dsk</code>, a disk holding it as <code class="nw">MATRIX.BIN</code></td>
         </tr>
         <tr>
           <td><code class="nw">matrix_rain_coco3.asm</code><br>CoCo 3</td>
-          <td><code class="nw">build-coco3.ps1</code></td>
+          <td><code class="nw">coco3\build.ps1</code></td>
           <td><code class="nw">matrix_rain_coco3.bin</code> and <code class="nw">.cas</code>: 80 columns, for an
             RGB monitor, <code class="nw">MATRIX3</code> on tape<br>
             <code class="nw">matrix_rain_coco3_cmp.bin</code> and <code class="nw">_cmp.cas</code>: 40 columns, for
@@ -321,7 +324,7 @@
   </div>
   <p>The scripts look for each tool where it is on the machine they were written on. If
     yours are elsewhere, say where. Both scripts take the same options:</p>
-  <div class="code"><pre>.\build-coco.ps1 -Test -Lwtools D:\lwtools\bin -XRoar D:\XRoar\xroar.exe -Cc65 D:\cc65 -Roms D:\XRoar\roms</pre></div>
+  <div class="code"><pre>.\build.ps1 -Test -Lwtools D:\lwtools\bin -XRoar D:\XRoar\xroar.exe -Cc65 D:\cc65 -Roms D:\XRoar\roms</pre></div>
   <div class="table-wrap">
     <table>
       <thead>
@@ -437,28 +440,29 @@ BLOCKGLITCH equ 128          ; chance a green block changes each time the
 
 <section id="build">
   <h2>Build</h2>
-  <div class="code"><pre>.\build-coco.ps1
-.\build-coco3.ps1</pre></div>
+  <p>In <code class="nw">coco</code>, and then in <code class="nw">coco3</code>:</p>
+  <div class="code"><pre>.\build.ps1</pre></div>
   <div class="code"><div class="label">Output</div><pre>Built matrix_rain_coco.bin (488 bytes), matrix_rain_coco.cas and matrix_rain_coco.dsk
 
 Built matrix_rain_coco3.bin (711 bytes) and matrix_rain_coco3.cas
 Built matrix_rain_coco3_cmp.bin (708 bytes) and matrix_rain_coco3_cmp.cas
 Built matrix_rain_coco3.dsk holding both</pre></div>
   <p>Add <code class="nw">-Run</code> to open the result in XRoar, set up for the right machine:</p>
-  <div class="code"><pre>.\build-coco.ps1 -Run              # a CoCo 2B
-.\build-coco3.ps1 -Run             # a CoCo 3 on an RGB monitor, 80 columns
-.\build-coco3.ps1 -Run -Composite  # a CoCo 3 on a TV, 40 columns</pre></div>
+  <div class="code"><pre>.\build.ps1 -Run              # in coco: a CoCo 2B
+.\build.ps1 -Run              # in coco3: a CoCo 3 on an RGB monitor, 80 columns
+.\build.ps1 -Run -Composite   # in coco3: a CoCo 3 on a TV, 40 columns</pre></div>
 
   <h3>By hand</h3>
   <p><code class="nw">lwasm</code> builds the programs. <code class="nw">--decb</code> asks for Disk BASIC's
     <code class="nw">.bin</code> format, and <code class="nw">-D COMPOSITE</code> selects the CoCo 3's
-    40-column settings:</p>
-  <div class="code"><pre>lwasm --decb -o matrix_rain_coco.bin matrix_rain_coco.asm
-lwasm --decb -o matrix_rain_coco3.bin matrix_rain_coco3.asm
+    40-column settings. In <code class="nw">coco</code>:</p>
+  <div class="code"><pre>lwasm --decb -o matrix_rain_coco.bin matrix_rain_coco.asm</pre></div>
+  <p>In <code class="nw">coco3</code>:</p>
+  <div class="code"><pre>lwasm --decb -o matrix_rain_coco3.bin matrix_rain_coco3.asm
 lwasm --decb -D COMPOSITE -o matrix_rain_coco3_cmp.bin matrix_rain_coco3.asm</pre></div>
   <p>For the tape and disk images, load the image writers into PowerShell and give them
-    full paths:</p>
-  <div class="code"><pre>. .\tools\coco_images.ps1
+    full paths. In <code class="nw">coco</code>:</p>
+  <div class="code"><pre>. ..\tools\coco_images.ps1
 New-CocoCas -Bin "$PWD\matrix_rain_coco.bin" -Name MATRIX -Path "$PWD\matrix_rain_coco.cas"
 New-CocoDsk -Bin "$PWD\matrix_rain_coco.bin" -Name MATRIX -Path "$PWD\matrix_rain_coco.dsk"</pre></div>
   <p class="muted">With the settings unchanged, each of these commands writes a file
@@ -467,8 +471,8 @@ New-CocoDsk -Bin "$PWD\matrix_rain_coco.bin" -Name MATRIX -Path "$PWD\matrix_rai
 
 <section id="check">
   <h2>Check your change</h2>
-  <div class="code"><pre>.\build-coco.ps1 -Test
-.\build-coco3.ps1 -Test</pre></div>
+  <p>In <code class="nw">coco</code> or <code class="nw">coco3</code>:</p>
+  <div class="code"><pre>.\build.ps1 -Test</pre></div>
   <p>Each script builds everything, then tests it in XRoar with no window. The CoCo 1/2
     test takes about 10 seconds, and the CoCo 3's about 30, since it tests both builds.
     The CoCo 1/2 test prints:</p>
@@ -525,7 +529,7 @@ composite  frame cost: 11,744 cycles on average, 13,919 at most, of a 29,979-cyc
       <a href="#frame">Staying inside the frame</a>.</dd>
   </dl>
   <p>If you change <code class="nw">tools\coco_images.ps1</code> or <code class="nw">tools\xroar.ps1</code>,
-    run <code class="nw">.\tools\test_coco_tools.ps1</code> too. It prints <code class="nw">PASS</code>,
+    run <code class="nw">..\tools\test_coco_tools.ps1</code> too. It prints <code class="nw">PASS</code>,
     <code class="nw">FAIL</code> or <code class="nw">SKIP</code> for each of its checks.</p>
 </section>
 

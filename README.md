@@ -27,26 +27,42 @@ And for changing it, building every output file, and running the tests:
 They're HTML pages. GitHub shows their source, so open them in a browser
 from a clone or a download of the repository.
 
+## Layout
+
+Each machine has a folder holding its source, its build script and the
+files you load into the machine or an emulator:
+
+| Folder | What's in it |
+|--------|--------------|
+| `pet/` | The PET 8032 and 4032 assembly, the C version, and their `.prg` files |
+| `coco/` | The Color Computer 1/2 version: assembly, its C reference model, and the `.bin`, `.cas` and `.dsk` files |
+| `coco3/` | The Color Computer 3 version, both builds, the same way |
+| `tools/` | Test harnesses, the tape and disk image writers, and the profiler |
+| `docs/` | The guides above, and design notes |
+
+The build scripts work from any folder. The examples below run them from
+the repository folder.
+
 ## Development
 
 This project was developed using [C64 Studio](https://github.com/GeorgRottensteiner/C64Studio), an IDE for 6502 assembly targeting Commodore 8-bit computers.
 
 ## The C version
 
-`matrix_rain_8032.c` is the same effect written in C, compiled for the PET
+`pet/matrix_rain_8032.c` is the same effect written in C, compiled for the PET
 with [cc65](https://cc65.github.io/). It pokes the same screen RAM, waits on
 the same VIA retrace bit, and carries the same LFSR with the same seed, so it
 draws the same sequence of characters as the assembly.
 
 ```powershell
-.\build.ps1            # writes matrix_rain_8032_c.prg
-.\build.ps1 -Run       # and launches it in VICE xpet
-.\build.ps1 -Test      # runs it under cc65's 6502 simulator and checks
-                       # it against the assembly
-.\tools\profile.ps1    # shows which routines a frame's cycles go to
+.\pet\build.ps1          # writes pet\matrix_rain_8032_c.prg
+.\pet\build.ps1 -Run     # and launches it in VICE xpet
+.\pet\build.ps1 -Test    # runs it under cc65's 6502 simulator and checks
+                         # it against the assembly
+.\tools\profile.ps1      # shows which routines a frame's cycles go to
 ```
 
-Or by hand:
+Or by hand, from the `pet` folder:
 
 ```
 cl65 -t pet -Oi -Cl -o matrix_rain_8032_c.prg matrix_rain_8032.c
@@ -75,7 +91,7 @@ the one to use on real hardware.
 
 ## The Color Computer version
 
-`matrix_rain_coco.asm` is the effect on the TRS-80 Color Computer 1 and 2,
+`coco/matrix_rain_coco.asm` is the effect on the TRS-80 Color Computer 1 and 2,
 in 6809 assembly. It uses the CoCo's 32×16 text screen: bright green letters
 on a black screen, with the odd green graphics block that keeps flickering
 through new patterns as its trail falls. A highlighted lead shows as a dark
@@ -87,9 +103,9 @@ To run it in the XRoar emulator, follow
 [Running in XRoar](docs/running-in-xroar.html).
 
 ```powershell
-.\build-coco.ps1         # writes matrix_rain_coco.bin, .cas and .dsk
-.\build-coco.ps1 -Run    # and opens the .bin in XRoar
-.\build-coco.ps1 -Test   # checks it in XRoar against matrix_rain_coco.c
+.\coco\build.ps1         # writes matrix_rain_coco.bin, .cas and .dsk
+.\coco\build.ps1 -Run    # and opens the .bin in XRoar
+.\coco\build.ps1 -Test   # checks it in XRoar against matrix_rain_coco.c
 ```
 
 Building needs [LWTOOLS](http://www.lwtools.ca/). Running and testing need
@@ -123,7 +139,7 @@ to agree:
 
 ## The Color Computer 3 version
 
-`matrix_rain_coco3.asm` is the effect in colour on the TRS-80 Color
+`coco3/matrix_rain_coco3.asm` is the effect in colour on the TRS-80 Color
 Computer 3, using its hardware text mode, where every character has its
 own colours. Each trail fades from a white head through bright green and
 green to dark green, and accented letters flicker through the trails in
@@ -142,10 +158,10 @@ reset. [Running in XRoar](docs/running-in-xroar.html) covers both builds,
 including which TV input each one needs.
 
 ```powershell
-.\build-coco3.ps1                  # writes both builds, their tapes and the disk
-.\build-coco3.ps1 -Run             # opens the RGB build in XRoar
-.\build-coco3.ps1 -Run -Composite  # opens the composite build
-.\build-coco3.ps1 -Test            # checks both in XRoar against matrix_rain_coco3.c
+.\coco3\build.ps1                  # writes both builds, their tapes and the disk
+.\coco3\build.ps1 -Run             # opens the RGB build in XRoar
+.\coco3\build.ps1 -Run -Composite  # opens the composite build
+.\coco3\build.ps1 -Test            # checks both in XRoar against matrix_rain_coco3.c
 ```
 
 The settings sit at the top of `matrix_rain_coco3.asm` and
@@ -155,7 +171,7 @@ trails capped at 23 rows.
 
 ## Running
 
-Load the .prg file on a Commodore PET 8032 or emulator (such as [VICE xpet](https://vice-emu.sourceforge.io/)):
+Load a .prg file from the `pet` folder on a Commodore PET 8032 or emulator (such as [VICE xpet](https://vice-emu.sourceforge.io/)):
 
 ```
 LOAD "*",8
